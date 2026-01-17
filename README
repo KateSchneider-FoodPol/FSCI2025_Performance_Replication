@@ -1,0 +1,31 @@
+# FSCI2025_Performance_Replication
+Replication files for the 2025 publication of the Food Systems Countdown Initiative
+Last modified: 16 January 2026
+
+LICENCE: This work is licensed under CC BY-NC-SA 4.0: Attribution-NonCommercial-ShareAlike 4.0 International
+See LICENSE.txt for further details.
+
+SOFTWARE:
+Software required: R and R studio
+R version used to create the code: R version 4.4.1
+Dependencies: packages required are listed at the top of each script. If not installed, these must first be installed to your R instance's library and then loaded.
+
+LOADING INSTRUCTIONS:
+The files should be opened through the R project file so that all file paths work correctly.
+
+SCRIPTS:
+
+
+EXPECTED PROCESSING TIME: Several steps in the data management script require several minutes to run. When processing the spatial data for the Milan Urban Food Policy Pact indicator, working memory may also be a constraint on certain systems. 
+
+OUTPUT DATASETS:
+Six datasets are created using the Data management script, listed below (supplementary data files 2-7). Intermediate datasets created for each indicator or data source and final datasets for subsequent analysis are saved in the "Output Data" folder. 
+
+SUPPLEMENTARY FILES:
+# Supplementary data file 1: "Supplementary Data 1 - Metadata and Codebook.xlsx" 
+# Supplementary data file 2: Full FSCI dataset, "FSCI_2025.rds"
+
+
+CONTACT: 
+Bianca Carducci
+Kate Schneider Lecy, k.schneider.lecy@gmail.com

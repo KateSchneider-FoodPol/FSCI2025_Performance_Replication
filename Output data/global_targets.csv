@@ -1,0 +1,62 @@
+﻿variable,short_label,target
+avail_fruits,Fruit availability,400
+avail_veg,Vegetable availability,400
+safeh20,Access to safe water    ,100
+MDD_iycf,"Minimum dietary diversity, child",100
+MDD_W,"Minimum dietary diversity, women",100
+All5,All 5 food groups,100
+protect_foods,Protective foods,100
+diet_moderation,Dietary moderation,0.005
+fishhealth,Fisheries health index,100
+mufppurbshare,Milan urban food policy pact,100
+open_budget_index,Open budget index,100
+foodsafety,Food safety capacity,100
+spcoverage,Social protection coverage,100
+mobile,Mobile phones per 100 people,100
+pctagland_minspecies,Minimum species diversity,100
+landholding_fem,Female landholdings,50
+accountability,Government accountability index,2.5
+govteffect,Government effectiveness index,2.5
+functionalintegrity,Functional integrity,1
+cspart,Civil society participation,2.5
+kcal_total,Dietary sourcing flexibility,1
+soccapindex,Social capital index,1
+pou,Prevalence of undernourishment,0.005
+fies_modsev,Experience food insecurity,0.005
+pctcantafford,Cannot afford healthy diet,0.005
+zeroFV,"Zero fruits or vegetables, adult",0.005
+zeroFV_iycf,"Zero fruits or vegetables, child",0.005
+fs_emissions,Food system emissions,0.005
+croplandchange,Cropland change,0.005
+childlabor,Child labor,0.005
+fpi_cv,Food price volatility,0.005
+rcsi_prevalence,Reduced coping strategies,0.005
+cohd,,
+UPFretailval_percap,,
+SSSD,,
+NCD_P,,
+NCD_R,,
+emint_cerealsnorice,,
+emint_beef,,
+emint_cowmilk,,
+emint_rice,,
+yield_cereals,,
+yield_fruit,,
+yield_beef,,
+yield_cowmilk,,
+yield_vegetables,,
+agwaterdraw,,
+pesticides,,
+N_efficiency,,
+fspathway,,
+healthtax,,
+accessinfo,,
+righttofood,,
+aginGDP,,
+unemp_r,,
+underemp_r,,
+spadequacy,,
+damages_gdp,,
+genres_plant,,
+genres_animal,,
+foodsupplyvar,,
