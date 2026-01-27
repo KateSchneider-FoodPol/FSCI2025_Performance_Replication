@@ -492,14 +492,14 @@ $~$
     legend <- get_legend(forlegend)
 
 # Save the plot as .png
-#     png(file.path(figtab_out, "SI Figure X_Trends.png"), width = 7.5, height = 10, unit = "in", res = 300)
+     png(file.path(figtab_out, "SI Figure X_Trends.png"), width = 7.5, height = 10, unit = "in", res = 300)
      cowplot::plot_grid(p1, legend, nrow = 2, rel_heights = c(22,1), align = "v")
-#     dev.off()
+     dev.off()
 #     
 # # And as PDF for journal
-#     pdf(file.path(figtab_out, "SI Figure X_Trends.pdf"), width = 7.5, height = 10)
+    pdf(file.path(figtab_out, "SI Figure X_Trends.pdf"), width = 7.5, height = 10)
     cowplot::plot_grid(p1, legend, nrow = 2, rel_heights = c(22,1), align = "v")
-#     dev.off()
+    dev.off()
 
 # Clean up
   rm(legend, p1, all_results2, data2, col_names, regress_tbl, all_results, data, surveyindicators, oneyear, Indicator, i, model, conf_int)  
@@ -647,13 +647,6 @@ $~$
 # Clean up
     rm(surveyindicators, oneyear, SItable1, regress_tbl, data2, all_results, results_list, data)
 
-# Create table
-  flextable::flextable(table) %>%
-    save_as_docx(path = file.path(figtab_out, "SI Table X.docx"))
-  
-# Clean up
-  rm()
-      
 ```
 
 $~$
@@ -712,7 +705,7 @@ $~$
                           "Zero fruits or vegetables, adult", 
                           "Zero fruits or vegetables, child",
                           "Protective foods",
-                          "Dietary moderation")
+                          "Unhealthy foods")
   
   # Set up data
     data <- FSCI_2025 %>%
@@ -935,7 +928,7 @@ This code creates one figure per theme.
                           "Zero fruits or vegetables, adult", 
                           "Zero fruits or vegetables, child",
                           "Protective foods",
-                          "Dietary moderation")
+                          "Unhealthy foods")
     data <- data %>%
       mutate(value = case_when(short_label %in% surveyindicators & country == "Global weighted mean" ~ NA, 
                                TRUE ~ value))
@@ -1076,7 +1069,7 @@ This code creates one figure per theme.
                           "Zero fruits or vegetables, adult", 
                           "Zero fruits or vegetables, child",
                           "Protective foods",
-                          "Dietary moderation")
+                          "Unhealthy foods")
 
   data <- FSCI_2025 %>%
     filter(!(unit == "categorical")) %>%
@@ -1240,7 +1233,7 @@ This code creates one figure per theme.
                           "Zero fruits or vegetables, adult", 
                           "Zero fruits or vegetables, child",
                           "Protective foods",
-                          "Dietary moderation")
+                          "Unhealthy foods")
 
   data <- FSCI_2025 %>%
     filter(!(unit == "categorical")) %>%

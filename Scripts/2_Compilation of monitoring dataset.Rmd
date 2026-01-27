@@ -367,6 +367,51 @@ load(file.path(data_in, "mufpp_2025_archive.RData"))
 
     # Clean up
       rm(result_fpi, fpi, fpi_imputed_sum, fpi_imputed)
+      
+# Manually add Agrifood systems emissions intensity (per capita) downloaded in January 2026 as part of revisions to the manuscript.
+  emissions_percap <- readxl::read_excel(file.path(data_in, "FAOSTAT_data_en_1-27-2026_FSEmissionspercap.xls"))
+  emissions_percap <- emissions_percap %>%
+      rename(year = Year, country = Area, unit = Unit, value = Value, M49_code = "Area Code (M49)") %>%
+      select(-c("Domain Code","Domain","Element Code","Item Code","Year Code")) %>%
+      filter(year >= 2000 & year <= 2024) %>%
+      mutate(Element = case_when(Element == "Value" ~ Item,
+                                 TRUE ~ Element),
+             Item = case_when(Element == Item ~ "",
+                              TRUE ~ Item),
+             M49_code = as.numeric(M49_code)) %>%
+      rename(indicator = Element,
+             item = Item)
+  
+      # Unit and indicator name
+      emissions_percap <- emissions_percap %>% 
+        select(-c(item)) %>%
+        mutate(unit = "tonnes CO2eq / capita",
+               indicator = "Agri-food systems greenhouse gas emissions per capita",
+               year = as.numeric(year),
+               M49_code = as.numeric(M49_code))
+      
+    # Add ISO codes and get correct UN country name
+      emissions_percap$ISO3 <- countrycode::countrycode(emissions_percap$M49_code, origin = 'un', destination = 'iso3c', warn = TRUE, nomatch = NA)
+      emissions_percap$country2 <- countrycode::countrycode(emissions_percap$ISO3, origin = 'iso3c', destination = 'un.name.en', warn = TRUE, nomatch = NA)
+      emissions_percap <- emissions_percap %>% mutate(country2 = case_when(is.na(country2) ~ country,
+                                                           TRUE ~ country2)) %>%
+        select(-c(country)) %>% rename(country = country2)
+        
+    # Eliminate observations with no ISO3 code (regional groupings)
+      emissions_percap <- emissions_percap %>%
+        filter(!(is.na(ISO3)))
+    
+    # Organize
+      emissions_percap <- emissions_percap[, col_order]
+      emissions_percap <- emissions_percap %>% unique()
+  
+    # Append to fao_data
+      fao_data <- rbind(fao_data, emissions_percap)
+
+    # Clean up
+      rm(emissions_percap)
+
+    
     
 ################################################################################
 
