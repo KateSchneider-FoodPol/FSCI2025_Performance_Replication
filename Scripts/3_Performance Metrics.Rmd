@@ -1,0 +1,799 @@
+---
+title: "FSCI 2025 – Calculation of Performance Metrics"
+author: "Bianca Carducci"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: flatly
+    highlight: tango
+    code_folding: show
+    number_sections: true
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo        = TRUE,
+  warning     = FALSE,
+  message     = FALSE,
+  fig.width   = 10,
+  fig.height  = 12,
+  dpi         = 300,
+  out.width   = "100%"
+)
+options(scipen = 999)
+```
+
+# Load Packages
+
+```{r load-packages}
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(tidyr)
+library(gt)
+library(ggplot2)
+library(scales)
+library(patchwork)
+library(purrr)
+library(viridisLite)
+library(webshot2)
+library(magick)
+library(stringr)
+library(cowplot)
+library(flextable)
+library(kableExtra)
+library(knitr)
+library(broom)
+```
+
+# File Paths and Options
+
+```{r file-paths}
+library(here)
+knitr::opts_knit$set(root.dir = here::here())
+
+data_in    <- here::here("Input data")
+data_out   <- here::here("Output data")
+figtab_out <- here::here("Figures & Tables")
+
+for (p in c(data_in, data_out, figtab_out)) {
+  if (!dir.exists(p)) stop("Folder not found: ", p)
+}
+```
+
+# Helper Functions and Constants
+
+```{r helper-functions}
+# "not in" operator
+`%notin%` <- Negate(`%in%`)
+
+# Indicators excluded from main Tables 1–2 and Figures 1–3 only
+exclude_indicators_main <- c("Protective food consumption", "Unhealthy food consumption")
+
+# Column / row ordering vectors
+col_order <- c("country", "M49_code", "ISO3", "indicator", "year", "value", "unit")
+row_order <- c("country", "year", "variable_order")
+
+# CAGR -----------------------------------------------------------------------
+calculate_cagr <- function(start_value, start_year, end_value, end_year) {
+  if (start_year == end_year || is.na(start_value) || is.na(end_value)) return(NA_real_)
+  if (start_value <= 0 || end_value <= 0) return(NA_real_)
+  ((end_value / start_value)^(1 / (end_year - start_year)) - 1) * 100
+}
+
+# Accelerated CAGR to reach a target ----------------------------------------
+calculate_accelerated_cagr <- function(start_value, start_year, target_value, target_year) {
+  if (start_year == target_year || is.na(start_value) || is.na(target_value)) return(NA_real_)
+  if (start_value <= 0 || target_value <= 0) return(NA_real_)
+  ((target_value / start_value)^(1 / (target_year - start_year)) - 1) * 100
+}
+
+# Exponential moving average -------------------------------------------------
+calculate_ema <- function(data, alpha = 0.5) {
+  data %>%
+    arrange(year) %>%
+    mutate(
+      ema_value = value[1],
+      ema_value = accumulate(value[-1],
+                             ~ alpha * .y + (1 - alpha) * .x,
+                             .init = value[1])
+    ) %>%
+    pull(ema_value) %>%
+    last()
+}
+
+# Save GT tables as HTML + PNG + PDF + DOCX ----------------------------------
+save_table_as_html_png_pdf <- function(gt_table, filename_base,
+                                       vwidth = 2400, vheight = 1600, zoom = 3) {
+  gtsave(gt_table, file.path(figtab_out, paste0(filename_base, ".html")))
+  gtsave(gt_table, file.path(figtab_out, paste0(filename_base, ".png")),
+         vwidth = vwidth, vheight = vheight, zoom = zoom)
+  gtsave(gt_table, file.path(figtab_out, paste0(filename_base, ".docx")))
+  Sys.sleep(2)
+  img <- image_read(file.path(figtab_out, paste0(filename_base, ".png")))
+  image_write(img,
+              path    = file.path(figtab_out, paste0(filename_base, ".pdf")),
+              format  = "pdf",
+              density = "300x300")
+  cat(paste0("✓ ", filename_base, " saved in HTML, PNG, PDF, and DOCX formats\n"))
+}
+```
+
+---
+
+# Part 1 – Load and Clean Data
+
+```{r load-data}
+analysis_data  <- read_csv(file.path(data_out, "FSCI_2025.csv"))
+global_targets <- read_csv(file.path(data_out, "global_targets.csv"))
+
+cat("Loaded", nrow(analysis_data),  "rows of analysis data\n")
+cat("Loaded", nrow(global_targets), "global targets\n")
+```
+
+```{r clean-data}
+# Harmonise short_label names in global_targets
+global_targets <- global_targets %>%
+  mutate(short_label = case_when(
+    short_label == "Unhealthy foods"   ~ "Unhealthy food consumption",
+    short_label == "Protective foods"  ~ "Protective food consumption",
+    TRUE ~ short_label
+  ))
+
+# Clean analysis data
+analysis_data <- analysis_data %>%
+  filter(!(tolower(unit) %in% c("binary", "categorical"))) %>%
+  mutate(value = as.numeric(value)) %>%
+  filter(!short_label %in% c(
+    "Conservation of genetic resources, animals",
+    "Conservation of genetic resources, plants",
+    "Disaster damages share of GDP",
+    "Emissions intensity, cereals (excl. rice)",
+    "Yield, fruit", "Yield, cereals", "Yield, vegetables",
+    "Milan urban food policy pact", "Cost of healthy diet",
+    "Yield, milk", "Yield, beef", "Food system emissions"
+  )) %>%
+  mutate(
+    short_label = case_when(
+      short_label == "Unhealthy foods"  ~ "Unhealthy food consumption",
+      short_label == "Protective foods" ~ "Protective food consumption",
+      TRUE ~ short_label
+    ),
+    desirable_direction = case_when(
+      short_label == "Unhealthy food consumption"  ~ -1,
+      short_label == "Protective food consumption" ~  1,
+      TRUE ~ desirable_direction
+    ),
+    theme = case_when(
+      short_label == "Unhealthy food consumption"                        ~ "Diets, Nutrition, and Health",
+      short_label == "Protective food consumption"                       ~ "Diets, Nutrition, and Health",
+      theme == "Environment, Natural Resources and Production"           ~ "Environment, Natural Resources, and Production",
+      TRUE ~ theme
+    )
+  )
+
+cat("Data cleaning complete!\n")
+```
+
+---
+
+# Part 2 – Calculate Benchmarks
+
+```{r benchmarks}
+# Most recent non-NA value per country/indicator (2015–2024)
+latest_data <- analysis_data %>%
+  filter(year >= 2015 & year <= 2024) %>%
+  group_by(country, short_label) %>%
+  arrange(desc(year)) %>%
+  filter(!is.na(value)) %>%
+  slice_head(n = 1) %>%
+  ungroup()
+
+# Function: calculate benchmarks at a given grouping level
+calculate_milestones <- function(data, group_vars) {
+  data %>%
+    group_by(across(all_of(c(group_vars, "short_label")))) %>%
+    summarise(
+      milestone = case_when(
+        first(desirable_direction) ==  1 ~ mean(value[value >= quantile(value, 0.8, na.rm = TRUE)], na.rm = TRUE),
+        first(desirable_direction) == -1 ~ mean(value[value <= quantile(value, 0.2, na.rm = TRUE)], na.rm = TRUE),
+        TRUE ~ NA_real_
+      ),
+      theme                = first(theme),
+      desirable_direction  = first(desirable_direction),
+      group_value = if ("UN Continental Region" %in% group_vars) first(`UN Continental Region`)
+                   else if ("income_group" %in% group_vars) first(income_group)
+                   else "Global",
+      .groups = "drop"
+    )
+}
+
+milestones_global <- calculate_milestones(latest_data, group_vars = c()) %>%
+  filter(short_label != "aginGDP")
+milestones_region <- calculate_milestones(latest_data, group_vars = "UN Continental Region")
+milestones_income <- calculate_milestones(latest_data, group_vars = "income_group")
+
+# Combine and pivot wide
+milestones_wide <- bind_rows(milestones_global, milestones_region, milestones_income) %>%
+  select(short_label, theme, desirable_direction, group_value, milestone) %>%
+  mutate(group_value = gsub(" ", "_", group_value)) %>%
+  pivot_wider(names_from = group_value, values_from = milestone, names_prefix = "benchmark_")
+
+# Merge global targets
+final_table <- milestones_wide %>%
+  left_join(global_targets, by = "short_label") %>%
+  relocate(target, .after = short_label) %>%
+  select(-desirable_direction, -variable, -starts_with("benchmark_NA"))
+
+# Ensure all expected benchmark columns exist
+expected_cols <- c(
+  "benchmark_Global",
+  "benchmark_Africa", "benchmark_Americas", "benchmark_Asia",
+  "benchmark_Europe", "benchmark_Oceania",
+  "benchmark_Low_income", "benchmark_Lower_middle_income",
+  "benchmark_Upper_middle_income", "benchmark_High_income"
+)
+for (col in expected_cols) {
+  if (!col %in% names(final_table)) final_table[[col]] <- NA_real_
+}
+
+# Add unit information
+unit_info <- analysis_data %>%
+  select(short_label, unit) %>%
+  distinct() %>%
+  group_by(short_label) %>%
+  slice_head(n = 1) %>%
+  ungroup()
+
+final_table <- final_table %>%
+  left_join(unit_info, by = "short_label") %>%
+  relocate(unit, .after = short_label) %>%
+  arrange(theme, short_label) %>%
+  relocate(theme, .before = short_label)
+
+cat("Calculated benchmarks for", nrow(final_table), "indicators\n")
+```
+
+---
+
+# Part 3 – Historical Progress (BAU Projections)
+
+```{r bau-projections}
+calculate_bau_projection <- function(data, start_year = 2015, min_points = 2) {
+  data %>%
+    mutate(value = as.numeric(value)) %>%
+    filter(year >= start_year, !is.na(value)) %>%
+    group_by(country, short_label) %>%
+    filter(n() >= min_points) %>%
+    arrange(year) %>%
+    summarise(
+      baseline_year  = first(year),
+      latest_year    = last(year),
+      baseline_value = first(value),
+      latest_value   = last(value),
+      year_span      = latest_year - baseline_year,
+      bau_cagr       = calculate_cagr(first(value), first(year), last(value), last(year)),
+      .groups = "drop"
+    ) %>%
+    left_join(
+      distinct(select(data, country, short_label, theme, unit,
+                      `UN Continental Region`, income_group, desirable_direction)),
+      by = c("country", "short_label")
+    ) %>%
+    mutate(
+      v2030e = if_else(!is.na(bau_cagr),
+                       latest_value * (1 + bau_cagr / 100)^(2030 - latest_year), NA_real_),
+      v2050e = if_else(!is.na(bau_cagr),
+                       latest_value * (1 + bau_cagr / 100)^(2050 - latest_year), NA_real_)
+    )
+}
+
+bau_standard <- calculate_bau_projection(analysis_data, start_year = 2015, min_points = 2)
+```
+
+```{r single-point-countries}
+add_single_point_meeting_targets <- function(original_data, bau_df, targets_df) {
+  single_point_countries <- original_data %>%
+    filter(year >= 2015, year <= 2025, !is.na(value)) %>%
+    group_by(country, short_label) %>%
+    filter(n() == 1) %>%
+    ungroup()
+
+  if (nrow(single_point_countries) == 0) return(bau_df)
+
+  single_point_meeting <- single_point_countries %>%
+    group_by(country, short_label) %>%
+    summarise(
+      baseline_year       = first(year),
+      latest_year         = first(year),
+      baseline_value      = first(value),
+      latest_value        = first(value),
+      year_span           = 0,
+      bau_cagr            = 0,
+      theme               = first(theme),
+      `UN Continental Region` = first(`UN Continental Region`),
+      income_group        = first(income_group),
+      desirable_direction = first(desirable_direction),
+      unit                = first(unit),
+      .groups = "drop"
+    ) %>%
+    mutate(v2030e = latest_value, v2050e = latest_value) %>%
+    left_join(targets_df, by = "short_label", suffix = c("", ".target")) %>%
+    mutate(
+      target_value = coalesce(target, benchmark_Global),
+      meets_target = case_when(
+        is.na(target_value) | is.na(latest_value)             ~ FALSE,
+        desirable_direction ==  1 & latest_value >= target_value ~ TRUE,
+        desirable_direction == -1 & latest_value <= target_value ~ TRUE,
+        TRUE ~ FALSE
+      )
+    ) %>%
+    filter(meets_target) %>%
+    select(country, short_label, baseline_year, latest_year, baseline_value, latest_value,
+           year_span, bau_cagr, theme, `UN Continental Region`, income_group,
+           desirable_direction, unit, v2030e, v2050e)
+
+  bind_rows(bau_df, single_point_meeting)
+}
+
+bau_expanded <- add_single_point_meeting_targets(analysis_data, bau_standard, final_table)
+cat("BAU projections calculated for", nrow(bau_expanded), "country-indicator combinations\n")
+```
+
+---
+
+# Part 4 – Challenge Classification
+
+```{r classify-challenges}
+classify_bau_progress <- function(bau_df, targets_df, milestone_year = 2030) {
+  end_col <- ifelse(milestone_year == 2030, "v2030e", "v2050e")
+
+  if (!"desirable_direction" %in% names(targets_df)) {
+    targets_df <- targets_df %>%
+      left_join(distinct(select(bau_df, short_label, desirable_direction)), by = "short_label")
+  }
+
+  benchmark_cols <- c("target", "benchmark_Global",
+                      "benchmark_Africa", "benchmark_Americas", "benchmark_Asia",
+                      "benchmark_Europe", "benchmark_Oceania",
+                      "benchmark_Low_income", "benchmark_Lower_middle_income",
+                      "benchmark_Upper_middle_income", "benchmark_High_income")
+  for (col in benchmark_cols[!benchmark_cols %in% names(targets_df)]) {
+    targets_df[[col]] <- NA_real_
+  }
+
+  bau_df %>%
+    filter(year_span > 0) %>%
+    left_join(targets_df, by = "short_label", suffix = c(".bau", ".target")) %>%
+    rowwise() %>%
+    mutate(
+      region_col_name  = paste0("benchmark_", gsub(" ", "_", `UN Continental Region`)),
+      income_col_name  = paste0("benchmark_", gsub(" ", "_", income_group)),
+      region_benchmark = ifelse(region_col_name %in% names(targets_df),
+                                targets_df[[region_col_name]][targets_df$short_label == short_label][1], NA_real_),
+      income_benchmark = ifelse(income_col_name %in% names(targets_df),
+                                targets_df[[income_col_name]][targets_df$short_label == short_label][1], NA_real_),
+      target_value     = coalesce(target, benchmark_Global)
+    ) %>%
+    ungroup() %>%
+    mutate(
+      progress_ratio = case_when(
+        is.na(!!sym(end_col)) | is.na(baseline_value) | is.na(target_value) ~ NA_real_,
+        (desirable_direction.bau ==  1 & baseline_value >= target_value) |
+          (desirable_direction.bau == -1 & baseline_value <= target_value) ~ 1,
+        desirable_direction.bau ==  1 & target_value > baseline_value ~
+          (!!sym(end_col) - baseline_value) / (target_value - baseline_value),
+        desirable_direction.bau == -1 & target_value < baseline_value ~
+          (baseline_value - !!sym(end_col)) / (baseline_value - target_value),
+        TRUE ~ NA_real_
+      ),
+      current_distance_pct = case_when(
+        is.na(latest_value) | is.na(target_value) ~ NA_real_,
+        (desirable_direction.bau ==  1 & latest_value >= target_value) |
+          (desirable_direction.bau == -1 & latest_value <= target_value) ~ 0,
+        desirable_direction.bau ==  1 & target_value > latest_value ~
+          abs((target_value - latest_value) / target_value) * 100,
+        desirable_direction.bau == -1 & target_value < latest_value ~
+          abs((latest_value - target_value) / target_value) * 100,
+        TRUE ~ NA_real_
+      ),
+      distance_category = case_when(
+        is.na(current_distance_pct)  ~ "Insufficient data",
+        current_distance_pct < 10   ~ "At target (0-10%)",
+        current_distance_pct < 33   ~ "Close (10-33%)",
+        current_distance_pct < 67   ~ "Moderate (33-67%)",
+        TRUE                         ~ "Far (67%+)"
+      ),
+      projected_value   = !!sym(end_col),
+      challenge_category = case_when(
+        is.na(progress_ratio)    ~ "Insufficient data",
+        progress_ratio >= 0.95   ~ "On target or target met",
+        progress_ratio >= 0.50   ~ "Moderate progress",
+        progress_ratio >= 0.10   ~ "Marginal progress",
+        progress_ratio >= 0      ~ "Stagnation",
+        progress_ratio <  0      ~ "Regression",
+        TRUE                     ~ "Insufficient data"
+      ),
+      target_source = case_when(
+        !is.na(target)           ~ "Global target",
+        !is.na(benchmark_Global) ~ "Global benchmark",
+        !is.na(region_benchmark) ~ "Regional benchmark",
+        !is.na(income_benchmark) ~ "Income group benchmark",
+        TRUE                     ~ "Unknown"
+      )
+    ) %>%
+    select(-region_col_name, -income_col_name, -region_benchmark, -income_benchmark) %>%
+    rename(desirable_direction = desirable_direction.bau,
+           theme = theme.bau,
+           unit  = unit.bau) %>%
+    select(-matches("\\.target$"))
+}
+
+classified_2030 <- classify_bau_progress(bau_standard, final_table, milestone_year = 2030)
+classified_2050 <- classify_bau_progress(bau_standard, final_table, milestone_year = 2050)
+
+cat("Classified", nrow(classified_2030), "entries for 2030 targets\n")
+cat("Classified", nrow(classified_2050), "entries for 2050 targets\n")
+```
+
+---
+
+# Part 5 – Distance Calculations
+
+```{r distances}
+calculate_country_distances <- function(data, benchmarks) {
+  latest_country_data <- data %>%
+    group_by(country, short_label) %>%
+    arrange(desc(year)) %>%
+    filter(!is.na(value)) %>%
+    slice_head(n = 1) %>%
+    ungroup()
+
+  latest_country_data %>%
+    left_join(select(benchmarks, short_label, target, starts_with("benchmark_")),
+              by = "short_label") %>%
+    rowwise() %>%
+    mutate(
+      region_col_name    = paste0("benchmark_", gsub(" ", "_", `UN Continental Region`)),
+      income_col_name    = paste0("benchmark_", gsub(" ", "_", income_group)),
+      regional_benchmark = if (region_col_name %in% names(benchmarks))
+        benchmarks[[region_col_name]][benchmarks$short_label == short_label][1] else NA_real_,
+      income_benchmark   = if (income_col_name %in% names(benchmarks))
+        benchmarks[[income_col_name]][benchmarks$short_label == short_label][1] else NA_real_,
+
+      # Directional absolute distances
+      dir_abs_distance_to_target   = case_when(
+        is.na(target)            | is.na(value) ~ NA_real_,
+        desirable_direction ==  1 ~ value - target,
+        desirable_direction == -1 ~ target - value, TRUE ~ NA_real_),
+      dir_abs_distance_to_global   = case_when(
+        is.na(benchmark_Global)  | is.na(value) ~ NA_real_,
+        desirable_direction ==  1 ~ value - benchmark_Global,
+        desirable_direction == -1 ~ benchmark_Global - value, TRUE ~ NA_real_),
+      dir_abs_distance_to_regional = case_when(
+        is.na(regional_benchmark)| is.na(value) ~ NA_real_,
+        desirable_direction ==  1 ~ value - regional_benchmark,
+        desirable_direction == -1 ~ regional_benchmark - value, TRUE ~ NA_real_),
+      dir_abs_distance_to_income   = case_when(
+        is.na(income_benchmark)  | is.na(value) ~ NA_real_,
+        desirable_direction ==  1 ~ value - income_benchmark,
+        desirable_direction == -1 ~ income_benchmark - value, TRUE ~ NA_real_),
+
+      # Directional percentage distances
+      dir_pct_distance_to_target   = case_when(
+        is.na(target)            | is.na(value) | value == 0 ~ NA_real_,
+        desirable_direction ==  1 ~ (value - target)            / abs(value) * 100,
+        desirable_direction == -1 ~ (target - value)            / abs(value) * 100, TRUE ~ NA_real_),
+      dir_pct_distance_to_global   = case_when(
+        is.na(benchmark_Global)  | is.na(value) | value == 0 ~ NA_real_,
+        desirable_direction ==  1 ~ (value - benchmark_Global)  / abs(value) * 100,
+        desirable_direction == -1 ~ (benchmark_Global - value)  / abs(value) * 100, TRUE ~ NA_real_),
+      dir_pct_distance_to_regional = case_when(
+        is.na(regional_benchmark)| is.na(value) | value == 0 ~ NA_real_,
+        desirable_direction ==  1 ~ (value - regional_benchmark)/ abs(value) * 100,
+        desirable_direction == -1 ~ (regional_benchmark - value)/ abs(value) * 100, TRUE ~ NA_real_),
+      dir_pct_distance_to_income   = case_when(
+        is.na(income_benchmark)  | is.na(value) | value == 0 ~ NA_real_,
+        desirable_direction ==  1 ~ (value - income_benchmark)  / abs(value) * 100,
+        desirable_direction == -1 ~ (income_benchmark - value)  / abs(value) * 100, TRUE ~ NA_real_),
+
+      # Status flags
+      meets_target   = if_else((desirable_direction ==  1 & value >= target)   |
+                                (desirable_direction == -1 & value <= target),   1L, 0L),
+      meets_global   = if_else((desirable_direction ==  1 & value >= benchmark_Global) |
+                                (desirable_direction == -1 & value <= benchmark_Global), 1L, 0L),
+      meets_regional = if_else((desirable_direction ==  1 & value >= regional_benchmark) |
+                                (desirable_direction == -1 & value <= regional_benchmark), 1L, 0L),
+      meets_income   = if_else((desirable_direction ==  1 & value >= income_benchmark) |
+                                (desirable_direction == -1 & value <= income_benchmark), 1L, 0L)
+    ) %>%
+    ungroup() %>%
+    select(-region_col_name, -income_col_name)
+}
+
+country_distance_data <- calculate_country_distances(analysis_data, final_table)
+country_distances_df  <- country_distance_data
+
+cat("Distances calculated for", nrow(country_distance_data), "country-indicator combinations\n")
+```
+
+```{r mean-distances}
+calculate_mean_distances <- function(distance_data) {
+  global_means <- distance_data %>%
+    group_by(short_label) %>%
+    summarise(group_type = "Global", group_name = "Global",
+              mean_dir_abs_distance_to_target   = mean(dir_abs_distance_to_target,   na.rm = TRUE),
+              mean_dir_abs_distance_to_global   = mean(dir_abs_distance_to_global,   na.rm = TRUE),
+              mean_dir_abs_distance_to_regional = mean(dir_abs_distance_to_regional, na.rm = TRUE),
+              mean_dir_abs_distance_to_income   = mean(dir_abs_distance_to_income,   na.rm = TRUE),
+              .groups = "drop")
+
+  regional_means <- distance_data %>%
+    group_by(short_label, `UN Continental Region`) %>%
+    summarise(group_type = "Regional", group_name = first(`UN Continental Region`),
+              mean_dir_abs_distance_to_target   = mean(dir_abs_distance_to_target,   na.rm = TRUE),
+              mean_dir_abs_distance_to_global   = mean(dir_abs_distance_to_global,   na.rm = TRUE),
+              mean_dir_abs_distance_to_regional = mean(dir_abs_distance_to_regional, na.rm = TRUE),
+              mean_dir_abs_distance_to_income   = mean(dir_abs_distance_to_income,   na.rm = TRUE),
+              .groups = "drop") %>%
+    select(-`UN Continental Region`)
+
+  income_means <- distance_data %>%
+    group_by(short_label, income_group) %>%
+    summarise(group_type = "Income", group_name = first(income_group),
+              mean_dir_abs_distance_to_target   = mean(dir_abs_distance_to_target,   na.rm = TRUE),
+              mean_dir_abs_distance_to_global   = mean(dir_abs_distance_to_global,   na.rm = TRUE),
+              mean_dir_abs_distance_to_regional = mean(dir_abs_distance_to_regional, na.rm = TRUE),
+              mean_dir_abs_distance_to_income   = mean(dir_abs_distance_to_income,   na.rm = TRUE),
+              .groups = "drop") %>%
+    select(-income_group)
+
+  bind_rows(global_means, regional_means, income_means)
+}
+
+mean_benchmark_distances <- calculate_mean_distances(country_distance_data)
+```
+
+---
+
+# Part 6 – Required Progress (EMA Trajectories)
+
+```{r ema-trajectories}
+calculate_ema_trajectories <- function(data, benchmarks, alpha = 0.5) {
+  country_indicator_data <- data %>%
+    group_by(country, short_label) %>%
+    filter(!is.na(value)) %>%
+    arrange(year)
+
+  ema_data <- country_indicator_data %>%
+    mutate(ema_value = purrr::accumulate(
+      value,
+      ~ if (is.na(.x)) .y else alpha * .y + (1 - alpha) * .x,
+      .init = value[1]
+    )[-1]) %>%
+    ungroup()
+
+  latest_country_ema <- ema_data %>%
+    group_by(country, short_label) %>%
+    arrange(desc(year)) %>%
+    slice_head(n = 1) %>%
+    mutate(baseline_value = ema_value, baseline_year = year) %>%
+    ungroup()
+
+  latest_country_ema %>%
+    left_join(select(benchmarks, short_label, target, starts_with("benchmark_")),
+              by = "short_label") %>%
+    rowwise() %>%
+    mutate(
+      region_col_name    = paste0("benchmark_", gsub(" ", "_", `UN Continental Region`)),
+      income_col_name    = paste0("benchmark_", gsub(" ", "_", income_group)),
+      regional_benchmark = if (region_col_name %in% names(benchmarks))
+        benchmarks[[region_col_name]][benchmarks$short_label == short_label][1] else NA_real_,
+      income_benchmark   = if (income_col_name %in% names(benchmarks))
+        benchmarks[[income_col_name]][benchmarks$short_label == short_label][1] else NA_real_,
+
+      ema_cagr_to_target_2030 = case_when(
+        desirable_direction ==  1 & baseline_value >= target ~ 0,
+        desirable_direction == -1 & baseline_value <= target ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, target, 2030)),
+      ema_cagr_to_target_2050 = case_when(
+        desirable_direction ==  1 & baseline_value >= target ~ 0,
+        desirable_direction == -1 & baseline_value <= target ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, target, 2050)),
+      ema_cagr_to_global_benchmark_2030 = case_when(
+        desirable_direction ==  1 & baseline_value >= benchmark_Global ~ 0,
+        desirable_direction == -1 & baseline_value <= benchmark_Global ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, benchmark_Global, 2030)),
+      ema_cagr_to_global_benchmark_2050 = case_when(
+        desirable_direction ==  1 & baseline_value >= benchmark_Global ~ 0,
+        desirable_direction == -1 & baseline_value <= benchmark_Global ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, benchmark_Global, 2050)),
+      ema_cagr_to_regional_benchmark_2030 = case_when(
+        desirable_direction ==  1 & baseline_value >= regional_benchmark ~ 0,
+        desirable_direction == -1 & baseline_value <= regional_benchmark ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, regional_benchmark, 2030)),
+      ema_cagr_to_regional_benchmark_2050 = case_when(
+        desirable_direction ==  1 & baseline_value >= regional_benchmark ~ 0,
+        desirable_direction == -1 & baseline_value <= regional_benchmark ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, regional_benchmark, 2050)),
+      ema_cagr_to_income_benchmark_2030 = case_when(
+        desirable_direction ==  1 & baseline_value >= income_benchmark ~ 0,
+        desirable_direction == -1 & baseline_value <= income_benchmark ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, income_benchmark, 2030)),
+      ema_cagr_to_income_benchmark_2050 = case_when(
+        desirable_direction ==  1 & baseline_value >= income_benchmark ~ 0,
+        desirable_direction == -1 & baseline_value <= income_benchmark ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, income_benchmark, 2050))
+    ) %>%
+    ungroup() %>%
+    select(-region_col_name, -income_col_name, -regional_benchmark, -income_benchmark)
+}
+
+ema_accelerated_trajectories <- calculate_ema_trajectories(analysis_data, final_table, alpha = 0.5)
+cat("EMA-based trajectories calculated for", nrow(ema_accelerated_trajectories), "entries\n")
+```
+
+```{r ema-cagr-summaries}
+ema_cagr_summaries <- bind_rows(
+  # Regional
+  ema_accelerated_trajectories %>%
+    group_by(`UN Continental Region`, short_label, theme, unit, desirable_direction) %>%
+    summarise(
+      mean_ema_cagr_to_target_2030              = mean(ema_cagr_to_target_2030,              na.rm = TRUE),
+      mean_ema_cagr_to_target_2050              = mean(ema_cagr_to_target_2050,              na.rm = TRUE),
+      mean_ema_cagr_to_global_benchmark_2030    = mean(ema_cagr_to_global_benchmark_2030,    na.rm = TRUE),
+      mean_ema_cagr_to_global_benchmark_2050    = mean(ema_cagr_to_global_benchmark_2050,    na.rm = TRUE),
+      mean_ema_cagr_to_regional_benchmark_2030  = mean(ema_cagr_to_regional_benchmark_2030,  na.rm = TRUE),
+      mean_ema_cagr_to_regional_benchmark_2050  = mean(ema_cagr_to_regional_benchmark_2050,  na.rm = TRUE),
+      mean_ema_cagr_to_income_benchmark_2030    = mean(ema_cagr_to_income_benchmark_2030,    na.rm = TRUE),
+      mean_ema_cagr_to_income_benchmark_2050    = mean(ema_cagr_to_income_benchmark_2050,    na.rm = TRUE),
+      countries_with_ema_target_cagr            = sum(!is.na(ema_cagr_to_target_2030)),
+      countries_with_ema_global_cagr            = sum(!is.na(ema_cagr_to_global_benchmark_2030)),
+      .groups = "drop"
+    ) %>%
+    mutate(group_type = "Regional", group_name = `UN Continental Region`) %>%
+    select(-`UN Continental Region`),
+  # Income
+  ema_accelerated_trajectories %>%
+    group_by(income_group, short_label, theme, unit, desirable_direction) %>%
+    summarise(
+      mean_ema_cagr_to_target_2030              = mean(ema_cagr_to_target_2030,              na.rm = TRUE),
+      mean_ema_cagr_to_target_2050              = mean(ema_cagr_to_target_2050,              na.rm = TRUE),
+      mean_ema_cagr_to_global_benchmark_2030    = mean(ema_cagr_to_global_benchmark_2030,    na.rm = TRUE),
+      mean_ema_cagr_to_global_benchmark_2050    = mean(ema_cagr_to_global_benchmark_2050,    na.rm = TRUE),
+      mean_ema_cagr_to_regional_benchmark_2030  = mean(ema_cagr_to_regional_benchmark_2030,  na.rm = TRUE),
+      mean_ema_cagr_to_regional_benchmark_2050  = mean(ema_cagr_to_regional_benchmark_2050,  na.rm = TRUE),
+      mean_ema_cagr_to_income_benchmark_2030    = mean(ema_cagr_to_income_benchmark_2030,    na.rm = TRUE),
+      mean_ema_cagr_to_income_benchmark_2050    = mean(ema_cagr_to_income_benchmark_2050,    na.rm = TRUE),
+      countries_with_ema_target_cagr            = sum(!is.na(ema_cagr_to_target_2030)),
+      countries_with_ema_global_cagr            = sum(!is.na(ema_cagr_to_global_benchmark_2030)),
+      .groups = "drop"
+    ) %>%
+    mutate(group_type = "Income", group_name = income_group) %>%
+    select(-income_group)
+)
+```
+
+---
+
+# Part 7 – Comprehensive Country-Level Spreadsheet
+
+```{r country-spreadsheet}
+# Data coverage
+data_coverage <- analysis_data %>%
+  group_by(country, short_label) %>%
+  filter(!is.na(value)) %>%
+  summarise(
+    total_data_points = n(),
+    year_range = paste0(min(year, na.rm = TRUE), "-", max(year, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+comprehensive_country_data <- country_distance_data %>%
+  left_join(data_coverage, by = c("country", "short_label")) %>%
+  left_join(
+    bau_expanded %>%
+      select(country, short_label, baseline_year, baseline_value, latest_year,
+             latest_value, bau_cagr, v2030e, v2050e),
+    by = c("country", "short_label"), suffix = c("", "_bau")
+  ) %>%
+  left_join(
+    classified_2030 %>% select(country, short_label, progress_ratio, challenge_category),
+    by = c("country", "short_label"), suffix = c("", "_class")
+  ) %>%
+  left_join(
+    ema_accelerated_trajectories %>%
+      select(country, short_label, starts_with("ema_cagr_")),
+    by = c("country", "short_label")
+  ) %>%
+  rowwise() %>%
+  mutate(
+    regional_benchmark_value = {
+      col <- paste0("benchmark_", gsub(" ", "_", `UN Continental Region`))
+      if (col %in% names(final_table)) final_table[[col]][final_table$short_label == short_label][1]
+      else NA_real_
+    },
+    income_benchmark_value = {
+      col <- paste0("benchmark_", gsub(" ", "_", income_group))
+      if (col %in% names(final_table)) final_table[[col]][final_table$short_label == short_label][1]
+      else NA_real_
+    }
+  ) %>%
+  ungroup() %>%
+  mutate(
+    distance_to_target_abs_cond        = if_else(!is.na(target), dir_abs_distance_to_target, NA_real_),
+    distance_to_target_pct_cond        = if_else(!is.na(target), dir_pct_distance_to_target, NA_real_),
+    progress_ratio_target_cond         = if_else(!is.na(target), progress_ratio,             NA_real_),
+    challenge_category_target_cond     = if_else(!is.na(target), challenge_category,         NA_character_),
+    bau_cagr_cond                      = if_else(is.na(target),  bau_cagr,                   NA_real_),
+    progress_ratio_global_cond         = if_else(is.na(target),  progress_ratio,             NA_real_),
+    challenge_category_global_cond     = if_else(is.na(target),  challenge_category,         NA_character_)
+  ) %>%
+  select(
+    Country                = country,
+    `UN Continental Region`,
+    `World Bank Country Income Group`                         = income_group,
+    Indicator                                                 = short_label,
+    Unit                                                      = unit,
+    `Total Data Points`                                       = total_data_points,
+    `Year Range of Total Data Points`                         = year_range,
+    `Latest Data Year`                                        = year,
+    `Latest Value`                                            = value,
+    `Target Value`                                            = target,
+    `Distance to Target (absolute)`                           = distance_to_target_abs_cond,
+    `Distance to Target (normalized percentage)`              = distance_to_target_pct_cond,
+    `Progress Ratio to Target`                                = progress_ratio_target_cond,
+    `Historical Progress Classification to Target`            = challenge_category_target_cond,
+    `Required Progress to Target 2030 using EMA method`       = ema_cagr_to_target_2030,
+    `Required Progress to Target 2050 using EMA method`       = ema_cagr_to_target_2050,
+    `Global Benchmark Value`                                  = benchmark_Global,
+    `Distance to Global Benchmark (absolute)`                 = dir_abs_distance_to_global,
+    `Distance to Global Benchmark (normalized percentage)`    = dir_pct_distance_to_global,
+    `Business as usual CAGR (only if there is no Global Target)` = bau_cagr_cond,
+    `Progress Ratio (only if there is no Global Target)`      = progress_ratio_global_cond,
+    `Historical Progress Classification (only if there is no Global Target)` = challenge_category_global_cond,
+    `Required Progress to Global Benchmark 2030 using EMA method` = ema_cagr_to_global_benchmark_2030,
+    `Required Progress to Global Benchmark 2050 using EMA method` = ema_cagr_to_global_benchmark_2050,
+    `Regional Benchmark Value`                                = regional_benchmark_value,
+    `Distance to Regional Benchmark (absolute)`               = dir_abs_distance_to_regional,
+    `Distance to Regional Benchmark (normalized percentage)`  = dir_pct_distance_to_regional,
+    `Required Progress to Regional Benchmark 2030 using EMA method` = ema_cagr_to_regional_benchmark_2030,
+    `Required Progress to Regional Benchmark 2050 using EMA method` = ema_cagr_to_regional_benchmark_2050,
+    `Income Benchmark Value`                                  = income_benchmark_value,
+    `Distance to Income Benchmark (absolute)`                 = dir_abs_distance_to_income,
+    `Distance to Income Benchmark (normalized percentage)`    = dir_pct_distance_to_income,
+    `Required Progress to Income Benchmark 2030 using EMA method` = ema_cagr_to_income_benchmark_2030,
+    `Required Progress to Income Benchmark 2050 using EMA method` = ema_cagr_to_income_benchmark_2050
+  ) %>%
+  arrange(Country, Indicator)
+
+output_file <- file.path(figtab_out, "Comprehensive_Country_Level_Data.csv")
+write.csv(comprehensive_country_data, output_file, row.names = FALSE, na = "")
+
+cat("Comprehensive spreadsheet saved:", output_file, "\n")
+cat("Total rows:", nrow(comprehensive_country_data), "| Countries:",
+    length(unique(comprehensive_country_data$Country)), "| Indicators:",
+    length(unique(comprehensive_country_data$Indicator)), "\n")
+```
+
+---
+
+# Save Workspace
+```{r save-workspace}
+save.image(file = here::here("FSCI_2025_workspace.RData"))
+cat("✓ Workspace saved\n")
+```
+
+---
+
+# Session Info
+```{r session-info}
+sessionInfo()
+```

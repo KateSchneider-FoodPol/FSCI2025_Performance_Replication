@@ -1,0 +1,3146 @@
+---
+title: "FSCI 2025 – Main Tables and Figures & Supplementary Outputs"
+author: "Bianca Carducci"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: flatly
+    highlight: tango
+    code_folding: show
+    number_sections: true
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo        = TRUE,
+  warning     = FALSE,
+  message     = FALSE,
+  fig.width   = 10,
+  fig.height  = 12,
+  dpi         = 300,
+  out.width   = "100%"
+)
+options(scipen = 999)
+```
+
+# Load Packages
+
+```{r load-packages}
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(tidyr)
+library(gt)
+library(ggplot2)
+library(scales)
+library(patchwork)
+library(purrr)
+library(viridisLite)
+library(webshot2)
+library(magick)
+library(stringr)
+library(cowplot)
+library(flextable)
+library(kableExtra)
+library(knitr)
+library(broom)
+```
+
+# File Paths
+
+```{r file-paths}
+library(here)
+knitr::opts_knit$set(root.dir = here::here())
+
+data_in    <- here::here("Input data")
+data_out   <- here::here("Output data")
+figtab_out <- here::here("Figures & Tables")
+
+for (p in c(data_in, data_out, figtab_out)) {
+  if (!dir.exists(p)) stop("Folder not found: ", p)
+}
+```
+
+# Helper Functions and Constants
+
+```{r helper-functions}
+# "not in" operator
+`%notin%` <- Negate(`%in%`)
+
+# Indicators excluded from main Tables 1–2 and Figures 1–3 only
+exclude_indicators_main <- c("Protective food consumption", "Unhealthy food consumption")
+
+# Column / row ordering vectors
+col_order <- c("country", "M49_code", "ISO3", "indicator", "year", "value", "unit")
+row_order <- c("country", "year", "variable_order")
+
+# CAGR -----------------------------------------------------------------------
+calculate_cagr <- function(start_value, start_year, end_value, end_year) {
+  if (start_year == end_year || is.na(start_value) || is.na(end_value)) return(NA_real_)
+  if (start_value <= 0 || end_value <= 0) return(NA_real_)
+  ((end_value / start_value)^(1 / (end_year - start_year)) - 1) * 100
+}
+
+# Accelerated CAGR to reach a target ----------------------------------------
+calculate_accelerated_cagr <- function(start_value, start_year, target_value, target_year) {
+  if (start_year == target_year || is.na(start_value) || is.na(target_value)) return(NA_real_)
+  if (start_value <= 0 || target_value <= 0) return(NA_real_)
+  ((target_value / start_value)^(1 / (target_year - start_year)) - 1) * 100
+}
+
+# Exponential moving average -------------------------------------------------
+calculate_ema <- function(data, alpha = 0.5) {
+  data %>%
+    arrange(year) %>%
+    mutate(
+      ema_value = value[1],
+      ema_value = accumulate(value[-1],
+                             ~ alpha * .y + (1 - alpha) * .x,
+                             .init = value[1])
+    ) %>%
+    pull(ema_value) %>%
+    last()
+}
+
+# Save GT tables as HTML + PNG + PDF + DOCX ----------------------------------
+save_table_as_html_png_pdf <- function(gt_table, filename_base,
+                                       vwidth = 2400, vheight = 1600, zoom = 3) {
+  gtsave(gt_table, file.path(figtab_out, paste0(filename_base, ".html")))
+  gtsave(gt_table, file.path(figtab_out, paste0(filename_base, ".png")),
+         vwidth = vwidth, vheight = vheight, zoom = zoom)
+  gtsave(gt_table, file.path(figtab_out, paste0(filename_base, ".docx")))
+  Sys.sleep(2)
+  img <- image_read(file.path(figtab_out, paste0(filename_base, ".png")))
+  image_write(img,
+              path    = file.path(figtab_out, paste0(filename_base, ".pdf")),
+              format  = "pdf",
+              density = "300x300")
+  cat(paste0("✓ ", filename_base, " saved in HTML, PNG, PDF, and DOCX formats\n"))
+}
+```
+
+---
+
+> **Note:** This file assumes all objects produced in `3 Performance Metrics.Rmd` are already loaded in the R environment (e.g. `analysis_data`, `final_table`, `bau_expanded`, `classified_2030`, `classified_2050`, `mean_benchmark_distances`, `country_distance_data`, `ema_accelerated_trajectories`, `ema_cagr_summaries`, `exclude_indicators_main`). Run Performance Metrics first, or load the saved `.RData` workspace before knitting this file.
+```{r load-workspace}
+load(here::here("FSCI_2025_workspace.RData"))
+cat("✓ Workspace loaded\n")
+```
+
+---
+
+# Part 1 – Main Tables
+
+## Extended Data Table 1
+
+```{r table1, results='asis'}
+# (Table 1 GT code — run interactively or knit to HTML/PDF to render)
+# Saved via gtsave() below; not printed inline to keep the document fast.
+
+final_table <- final_table %>%
+  mutate(source = case_when(
+    short_label == "Prevalence of undernourishment"   ~ "ICESCR/SDG",
+    short_label == "Experience food insecurity"        ~ "ICESCR/SDG",
+    short_label == "Cannot afford healthy diet"        ~ "CESCR",
+    short_label == "Zero fruits or vegetables, child"  ~ "CRC/SDG",
+    short_label == "Zero fruits or vegetables, adult"  ~ "ICESCR/SDG",
+    short_label == "Access to safe water"              ~ "UNGA",
+    short_label == "Minimum dietary diversity, child"  ~ "CRC/SDG",
+    short_label == "Minimum dietary diversity, women"  ~ "ICESCR/SDG",
+    short_label == "All 5 food groups"                 ~ "ICESCR/SDG",
+    short_label == "Fruit availability"                ~ "FSCI",
+    short_label == "Vegetable availability"            ~ "FSCI",
+    short_label == "Food system emissions change"      ~ "UNFCC",
+    short_label == "Cropland change"                   ~ "GBF",
+    short_label == "Fisheries health index"            ~ "SDG/GBF/FAO",
+    short_label == "Functional integrity"              ~ "GBF",
+    short_label == "Child labor"                       ~ "CRC",
+    short_label == "Female landholdings"               ~ "CEDAW/SDG",
+    short_label == "Social protection coverage"        ~ "UDHR/SDG",
+    short_label == "Civil society participation"       ~ "SDG",
+    short_label == "Government effectiveness index"    ~ "SDG",
+    short_label == "Government accountability index"   ~ "SDG",
+    short_label == "Open budget index"                 ~ "SDG",
+    short_label == "Food safety capacity"              ~ "SDG",
+    short_label == "Reduced coping strategies"         ~ "SDG",
+    short_label == "Dietary sourcing flexibility"      ~ "SDG",
+    short_label == "Food price volatility"             ~ "SDG",
+    short_label == "Social capital index"              ~ "SDG",
+    short_label == "Mobile phones per 100 people"      ~ "SDG",
+    short_label == "Minimum species diversity"         ~ "SDG/GBF",
+    TRUE ~ "-"
+  ))
+
+table1 <- final_table %>%
+  filter(!short_label %in% exclude_indicators_main) %>%
+  mutate(
+    theme              = ifelse(theme == "Environment, natural resources, and production",
+                                "Environment, Natural Resources, and Production", theme),
+    benchmark_Global   = ifelse(short_label == "Share of agriculture in GDP", NA_real_, benchmark_Global)
+  ) %>%
+  arrange(theme, short_label) %>%
+  gt(groupname_col = "theme") %>%
+  opt_table_font(font = "sans-serif", size = px(24)) %>%
+  tab_header(
+    title    = md("**Extended Data Table 1. Global Targets and Global, Regional and Income Benchmarks, By Indicator**"),
+    subtitle = md("*Global Targets are derived from the literature. Global, Regional and Income Benchmarks are calculated based on the mean of the 80th or 20th percentile.*")
+  ) %>%
+  fmt_number(columns = where(is.numeric), decimals = 1) %>%
+  fmt_missing(columns = everything(), missing_text = "-") %>%
+  cols_move(columns = source, after = target) %>%
+  cols_label(
+    short_label            = md("**Indicator**"),
+    unit                   = md("**Unit**"),
+    target                 = md("**Global Target**"),
+    source                 = md("**Source**"),
+    benchmark_Global       = md("**Global Benchmark**"),
+    benchmark_Africa       = md("*Africa*"),
+    benchmark_Americas     = md("*Americas*"),
+    benchmark_Asia         = md("*Asia*"),
+    benchmark_Europe       = md("*Europe*"),
+    benchmark_Oceania      = md("*Oceania*"),
+    benchmark_Low_income            = md("*Low income*"),
+    benchmark_Lower_middle_income   = md("*Lower middle income*"),
+    benchmark_Upper_middle_income   = md("*Upper middle income*"),
+    benchmark_High_income           = md("*High income*")
+  ) %>%
+  tab_spanner(label = md("**Regional Benchmarks**"),
+              columns = c(benchmark_Africa, benchmark_Americas, benchmark_Asia,
+                          benchmark_Europe, benchmark_Oceania)) %>%
+  tab_spanner(label = md("**Income Benchmarks**"),
+              columns = c(benchmark_Low_income, benchmark_Lower_middle_income,
+                          benchmark_Upper_middle_income, benchmark_High_income)) %>%
+  cols_align(align = "center", columns = everything()) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_row_groups()) %>%
+  tab_source_note(source_note = md(
+    "**Abbreviations:** ICESCR = International Covenant on Economic, Social and Cultural Rights; SDG = Sustainable Development Goals; CESCR = Committee on Economic, Social and Cultural Rights; CRC = Convention on the Rights of the Child; UNGA = United Nations General Assembly; UNFCC = United Nations Framework Convention on Climate Change; GBF = Global Biodiversity Framework; CEDAW = Convention on the Elimination of All Forms of Discrimination Against Women; UDHR = Universal Declaration of Human Rights; FAO = Food and Agriculture Organization."
+  ))
+
+gtsave(table1, file.path(figtab_out, "Table1.html"))
+gtsave(table1, file.path(figtab_out, "Table1.png"), vwidth = 2400, vheight = 1600, zoom = 3)
+Sys.sleep(2)
+img_t1 <- image_read(file.path(figtab_out, "Table1.png"))
+image_write(img_t1, path = file.path(figtab_out, "Table1.pdf"), format = "pdf", density = "300x300")
+cat("✓ Table 1 saved\n")
+```
+
+## Table 2 – Global Means
+
+```{r table2}
+global_means_t2 <- country_distances_df %>%
+  group_by(short_label) %>%
+  summarise(global_mean = mean(value, na.rm = TRUE), .groups = "drop")
+
+distance_data_t2 <- mean_benchmark_distances %>%
+  filter(group_type == "Global") %>%
+  select(short_label, mean_dir_abs_distance_to_target, mean_dir_abs_distance_to_global)
+
+table2 <- final_table %>%
+  filter(!short_label %in% exclude_indicators_main) %>%
+  left_join(global_means_t2,   by = "short_label") %>%
+  left_join(distance_data_t2,  by = "short_label") %>%
+  mutate(theme = ifelse(theme == "Environment, natural resources, and production",
+                        "Environment, Natural Resources, and Production", theme)) %>%
+  select(theme, short_label, unit, target, benchmark_Global,
+         global_mean, mean_dir_abs_distance_to_target, mean_dir_abs_distance_to_global) %>%
+  arrange(theme, short_label) %>%
+  gt(groupname_col = "theme") %>%
+  opt_table_font(font = "sans-serif", size = px(24)) %>%
+  tab_header(
+    title    = md("**Table 2. Global Means to Global Target and Benchmark, By Indicator**"),
+    subtitle = md("*Directional distances: positive = global mean above target/benchmark.*")
+  ) %>%
+  fmt_number(columns = where(is.numeric), decimals = 1) %>%
+  fmt_missing(columns = everything(), missing_text = "-") %>%
+  cols_label(
+    short_label                      = md("**Indicator**"),
+    unit                             = md("**Unit**"),
+    target                           = md("**Global Target**"),
+    benchmark_Global                 = md("**Global Benchmark**"),
+    global_mean                      = md("**Global Mean**"),
+    mean_dir_abs_distance_to_target  = md("**Distance to Global Target**"),
+    mean_dir_abs_distance_to_global  = md("**Distance to Global Benchmark**")
+  ) %>%
+  cols_align(align = "center", columns = everything()) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_row_groups())
+
+save_table_as_html_png_pdf(table2, filename_base = "Table2")
+gtsave(table2, filename = "Table2.docx")
+cat("✓ Table 2 saved\n")
+```
+
+---
+
+# Part 2 – Main Figures
+
+```{r figure-dimensions}
+STD_WIDTH  <- 10
+STD_HEIGHT <- 12
+STD_DPI    <- 300
+```
+
+## Figure 1 – Country Progress Toward 2030 Targets
+
+```{r figure1, fig.cap="Figure 1. Number of Countries by Progress Toward 2030 Target, by Challenge Category and Theme"}
+classified_2030_filtered <- classified_2030 %>%
+  filter(!short_label %in% c(exclude_indicators_main, "Share of agriculture in GDP"))
+
+challenge_levels <- c("On target or target met", "Moderate progress",
+                       "Marginal progress", "Stagnation", "Regression", "Insufficient data")
+
+challenge_summary_2030 <- classified_2030_filtered %>%
+  filter(!is.na(challenge_category)) %>%
+  mutate(
+    theme = case_when(
+      theme == "Environment, natural resources, and production" ~ "Environment, Natural Resources, and Production",
+      TRUE ~ theme),
+    challenge_category = factor(challenge_category, levels = challenge_levels)
+  ) %>%
+  group_by(theme, short_label, challenge_category) %>%
+  summarise(n_countries = n(), .groups = "drop")
+
+# Pad to 197 countries per indicator
+totals_2030 <- challenge_summary_2030 %>%
+  group_by(theme, short_label) %>%
+  summarise(current_total = sum(n_countries), .groups = "drop")
+
+pad_insufficient <- totals_2030 %>%
+  filter(current_total < 197) %>%
+  mutate(n_countries = 197 - current_total,
+         challenge_category = factor("Insufficient data", levels = challenge_levels)) %>%
+  select(theme, short_label, challenge_category, n_countries)
+
+challenge_summary_2030 <- bind_rows(challenge_summary_2030, pad_insufficient) %>%
+  mutate(challenge_category = factor(challenge_category, levels = challenge_levels))
+
+# Ordering within themes
+ordering_2030 <- challenge_summary_2030 %>%
+  group_by(theme, short_label) %>%
+  slice_max(n_countries, n = 1, with_ties = FALSE) %>%
+  mutate(category_priority = case_when(
+    challenge_category == "On target or target met" ~ 6,
+    challenge_category == "Moderate progress"       ~ 5,
+    challenge_category == "Marginal progress"        ~ 4,
+    challenge_category == "Stagnation"              ~ 3,
+    challenge_category == "Regression"              ~ 2,
+    TRUE                                            ~ 1
+  )) %>%
+  summarise(dominant_category = first(challenge_category),
+            category_priority = first(category_priority), .groups = "drop") %>%
+  left_join(
+    challenge_summary_2030 %>%
+      group_by(theme, short_label) %>%
+      summarise(prop_on_target = sum(n_countries[challenge_category == "On target or target met"],
+                                     na.rm = TRUE) / sum(n_countries), .groups = "drop"),
+    by = c("theme", "short_label")
+  )
+
+challenge_summary_2030 <- challenge_summary_2030 %>%
+  left_join(ordering_2030, by = c("theme", "short_label")) %>%
+  group_by(theme) %>%
+  mutate(order_within_theme = category_priority + prop_on_target / 1000) %>%
+  ungroup()
+
+custom_palette <- c(
+  "On target or target met" = "#41AB5D",
+  "Moderate progress"       = "#A1DAB4",
+  "Marginal progress"        = "#41B6C4",
+  "Stagnation"              = "#225EA8",
+  "Regression"              = "#08306B",
+  "Insufficient data"       = "#969696"
+)
+
+p_fig1 <- ggplot(challenge_summary_2030,
+                 aes(y = reorder(short_label, desc(order_within_theme)),
+                     x = n_countries, fill = challenge_category)) +
+  geom_bar(stat = "identity", position = position_stack(reverse = TRUE), width = 0.7) +
+  scale_fill_manual(values = custom_palette) +
+  facet_grid(theme ~ ., scales = "free_y", space = "free_y", switch = "y") +
+  theme_minimal() +
+  theme(
+    axis.text.y        = element_text(size = 8, face = "bold"),
+    axis.text.x        = element_text(size = 9),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor   = element_blank(),
+    strip.placement    = "outside",
+    strip.text.y.left  = element_text(angle = 0, hjust = 1, face = "bold", size = 8),
+    legend.position    = "right",
+    legend.title       = element_blank(),
+    plot.title         = element_text(face = "bold", size = 10),
+    plot.subtitle      = element_text(size = 8)
+  ) +
+  labs(
+    title    = str_wrap("Figure 1. Number of Countries by Progress Toward 2030 Target, by Challenge Category and Theme", width = 80),
+    subtitle = str_wrap("Categories based on progress ratio: ≥0.95 = On target, 0.50–0.95 = Moderate, 0.10–0.50 = Marginal, 0–0.10 = Stagnation, <0 = Regression.", width = 120),
+    y = NULL, x = "Number of Countries"
+  )
+
+print(p_fig1)
+
+png(file.path(figtab_out, "Figure_1.png"), width = STD_WIDTH, height = STD_HEIGHT, unit = "in", res = STD_DPI)
+print(p_fig1)
+dev.off()
+pdf(file.path(figtab_out, "Figure_1.pdf"), width = STD_WIDTH, height = STD_HEIGHT)
+print(p_fig1)
+dev.off()
+cat("✓ Figure 1 saved\n")
+```
+
+---
+
+# Part 3 – Supplementary Tables 1-14
+
+## Supplementary Table 1 – Target Justification
+
+```{r supp-table1}
+global_targets_justification <- tribble(
+  ~theme, ~indicator, ~unit, ~target_value, ~justification,
+  "Diets, Nutrition, and Health", "Prevalence of undernourishment", "% population", 0,
+    "Right to Food (ICESCR Article 11) and Zero Hunger (SDG 2)",
+  "Diets, Nutrition, and Health", "Experience food insecurity", "% population", 0,
+    "Right to Food (ICESCR Article 11) and Zero Hunger (SDG 2)",
+  "Diets, Nutrition, and Health", "Cannot afford healthy diet", "% population", 0,
+    "Economic Accessibility dimension of Right to Food (CESCR General Comment No. 12)",
+  "Diets, Nutrition, and Health", "Unhealthy food consumption", "% population", 0,
+    "Right to Health (ICESCR Article 12) and WHO NCD prevention Framework",
+  "Diets, Nutrition, and Health", "Zero fruits or vegetables, child", "% population 6-23 months", 0,
+    "Children's Right to Nutrition (CRC Article 24) and Zero Hunger (SDG 2)",
+  "Diets, Nutrition, and Health", "Zero fruits or vegetables, adult", "% adult population (≥15 y)", 0,
+    "Right to Food (ICESCR Article 11) and Zero Hunger (SDG 2)",
+  "Diets, Nutrition, and Health", "Access to safe water", "% population", 100,
+    "UN Human Right to Water and Sanitation (UNGA Resolution 64/292)",
+  "Diets, Nutrition, and Health", "Minimum dietary diversity, child", "% population, 6-23 months", 100,
+    "Children's Right to Nutrition (CRC Article 24) and Zero Hunger (SDG 2)",
+  "Diets, Nutrition, and Health", "Minimum dietary diversity, women", "% population, women 15-49", 100,
+    "Right to Food (ICESCR Article 11) and Zero Hunger (SDG 2)",
+  "Diets, Nutrition, and Health", "All 5 food groups", "% adult population (≥15 y)", 100,
+    "Right to Food (ICESCR Article 11) and Zero Hunger (SDG 2)",
+  "Diets, Nutrition, and Health", "Protective food consumption", "% population", 100,
+    "Right to Health (ICESCR Article 12) and WHO NCD prevention Framework",
+  "Diets, Nutrition, and Health", "Fruit availability", "grams/capita/day", 400,
+    "Based on targeted daily intake of 400 grams of fruits and vegetables daily (WHO recommendation).",
+  "Diets, Nutrition, and Health", "Vegetable availability", "grams/capita/day", 400,
+    "Based on targeted daily intake of 400 grams of fruits and vegetables daily (WHO recommendation).",
+  "Environment, Natural Resources, and Production", "Food system emissions change",
+    "Percent change relative to 2000-2010 country average baseline", 0,
+    "Paris Agreement (Article 4) commitment to climate neutrality",
+  "Environment, Natural Resources, and Production", "Cropland change", "%", 0,
+    "Kunming-Montreal Global Biodiversity Framework Target 1 (land-use change reduction)",
+  "Environment, Natural Resources, and Production", "Fisheries health index", "index", 100,
+    "Theoretical maximum (SDG 14.4; Kunming-Montreal GBF Target 10; FAO Code of Conduct for Responsible Fisheries)",
+  "Environment, Natural Resources, and Production", "Functional integrity", "% agricultural land", 100,
+    "Kunming-Montreal Global Biodiversity Framework Target 10 (sustainable agriculture)",
+  "Livelihoods, Poverty, and Equity", "Child labor",
+    "% children 5-17 (sex specific is % children 5-17 of that sex)", 0,
+    "Protection from Economic Exploitation (CRC Article 32, ILO Convention 182)",
+  "Livelihoods, Poverty, and Equity", "Female landholdings", "% landholdings by sex of operator", 50,
+    "Women's Equal Rights to Economic Resources (CEDAW, SDG 5.a)",
+  "Livelihoods, Poverty, and Equity", "Social protection coverage", "% population", 100,
+    "Right to Social Security (UDHR Article 22, ICESCR Article 9)",
+  "Governance", "Civil society participation", "index", 2.5,
+    "Theoretical maximum and Inclusive governance (SDG 16.7)",
+  "Governance", "Government effectiveness index", "index", 2.5,
+    "Theoretical maximum and Effective institutions for sustainable development (SDG 16.6)",
+  "Governance", "Accountability index", "index", 2.5,
+    "Theoretical maximum (SDG 16.7; Paris Agreement Enhanced Transparency Framework)",
+  "Governance", "Open budget index", "index", 100,
+    "Theoretical maximum (SDG 16.6; UN Convention Against Corruption)",
+  "Governance", "Food safety capacity", "Score", 100,
+    "Theoretical maximum (SDG 2.1 – Universal Access to Safe and Nutritious Food)",
+  "Resilience", "Food price volatility", "index", 0,
+    "Theoretical minimum (SDG 2.C; Committee on World Food Security Recommendations)",
+  "Resilience", "Reduced coping strategies", "% population", 0,
+    "Theoretical minimum (SDG 1.5 – Build resilience of those in vulnerable situations)",
+  "Resilience", "Dietary sourcing flexibility", "index", 1,
+    "Theoretical maximum (SDG 2.4; FAO's Sustainable Food and Agriculture Principles)",
+  "Resilience", "Social capital index", "index", 1,
+    "Theoretical maximum (SDG 11.3 – Inclusive and Sustainable Urbanization)",
+  "Resilience", "Mobile phones", "Number per 100 people", 100,
+    "Theoretical maximum (SDG 9.c; International Telecommunication Union)",
+  "Resilience", "Minimum species diversity", "% agricultural land", 100,
+    "Theoretical maximum (SDG 15.1; Convention on Biological Diversity; Kunming-Montreal GBF Target 9)"
+)
+
+supp_table1 <- global_targets_justification %>%
+  gt(groupname_col = "theme") %>%
+  opt_table_font(font = "sans-serif", size = px(24)) %>%
+  tab_header(title = md("**Supplementary Table 1. Justification of Global Targets**")) %>%
+  fmt_missing(columns = everything(), missing_text = "-") %>%
+  cols_label(indicator = "Indicator", unit = "Unit",
+             target_value = "Global Target", justification = "Justification") %>%
+  cols_width(indicator ~ px(180), unit ~ px(150),
+             target_value ~ px(120), justification ~ px(600)) %>%
+  cols_align(align = "left", columns = target_value) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_column_labels()) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_row_groups()) %>%
+  tab_style(style = cell_text(align = "left"), locations = cells_title(groups = "title")) %>%
+  tab_options(
+    table.border.top.width = px(0), table.border.bottom.width = px(0),
+    heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+    column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+    row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+    table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+    row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+    heading.background.color = "white", heading.title.font.size = px(36),
+    column_labels.font.size = px(28), table.font.size = px(24),
+    data_row.padding = px(4), column_labels.padding = px(4),
+    table.margin.left = px(0), table.margin.right = px(0)
+  )
+
+save_table_as_html_png_pdf(supp_table1, filename_base = "Supplementary_Table_1",
+                           vwidth = 2800, vheight = 2000, zoom = 3)
+cat("✓ Supplementary Table 1 saved\n")
+```
+
+## Supplementary Tables 2–4 – Benchmark Contributors
+
+```{r benchmark-contributors}
+identify_contributors <- function(data, group_vars) {
+  data %>%
+    group_by(across(all_of(c(group_vars, "short_label")))) %>%
+    mutate(
+      threshold_80 = quantile(value, 0.8, na.rm = TRUE),
+      threshold_20 = quantile(value, 0.2, na.rm = TRUE),
+      contributes  = case_when(
+        first(desirable_direction) ==  1 & value >= threshold_80 ~ TRUE,
+        first(desirable_direction) == -1 & value <= threshold_20 ~ TRUE,
+        TRUE ~ FALSE
+      )
+    ) %>%
+    filter(contributes) %>%
+    summarise(
+      contributing_countries = list(country),
+      contributing_values    = list(value),
+      n_countries = n(),
+      milestone   = case_when(
+        first(desirable_direction) ==  1 ~ mean(value[value >= first(threshold_80)], na.rm = TRUE),
+        first(desirable_direction) == -1 ~ mean(value[value <= first(threshold_20)], na.rm = TRUE),
+        TRUE ~ NA_real_
+      ),
+      theme               = first(theme),
+      desirable_direction = first(desirable_direction),
+      percentile_used     = ifelse(first(desirable_direction) == 1,
+                                   "Mean Top 20% (80th percentile)",
+                                   "Mean Bottom 20% (20th percentile)"),
+      .groups = "drop"
+    ) %>%
+    left_join(
+      data %>%
+        group_by(across(all_of(c(group_vars, "short_label")))) %>%
+        summarise(total_countries = n(), .groups = "drop"),
+      by = c(group_vars, "short_label")
+    ) %>%
+    left_join(
+      data %>%
+        group_by(across(all_of(c(group_vars, "short_label")))) %>%
+        summarise(year_range = paste0(min(year, na.rm = TRUE), "-", max(year, na.rm = TRUE)),
+                  .groups = "drop"),
+      by = c(group_vars, "short_label")
+    )
+}
+
+contributors_global <- identify_contributors(latest_data, group_vars = c()) %>%
+  mutate(group_value = "Global") %>% filter(short_label != "aginGDP")
+contributors_region <- identify_contributors(latest_data, group_vars = "UN Continental Region") %>%
+  rename(group_value = `UN Continental Region`)
+contributors_income <- identify_contributors(latest_data, group_vars = "income_group") %>%
+  rename(group_value = income_group)
+
+cat("Contributors – Global:", nrow(contributors_global), "indicators |",
+    "Regional:", nrow(contributors_region), "| Income:", nrow(contributors_income), "\n")
+```
+
+```{r build-contributor-display}
+# Shared helper to format country-value list
+format_country_values <- function(countries, values) {
+  if (length(countries) == 0) return("No countries")
+  sorted  <- order(values, decreasing = TRUE)
+  countries <- countries[sorted]; values <- values[sorted]
+  paste(paste0(countries, " (", round(values, 1), ")"), collapse = ", ")
+}
+
+add_display_col <- function(df) {
+  df %>%
+    mutate(countries_display = map2_chr(contributing_countries, contributing_values,
+                                         format_country_values)) %>%
+    left_join(analysis_data %>% select(short_label, unit) %>% distinct() %>%
+                group_by(short_label) %>% slice_head(n = 1) %>% ungroup(),
+              by = "short_label") %>%
+    mutate(theme = case_when(
+      theme == "Environment, natural resources, and production" ~
+        "Environment, Natural Resources, and Production",
+      TRUE ~ theme
+    ))
+}
+
+global_data_contrib  <- add_display_col(contributors_global)
+regional_data_contrib <- add_display_col(contributors_region)
+income_data_contrib   <- add_display_col(contributors_income) %>%
+  filter(!is.na(group_value)) %>%
+  mutate(group_value = factor(group_value, levels = c("Low income", "Lower middle income",
+                                                       "Upper middle income", "High income"))) %>%
+  arrange(theme, short_label, group_value) %>%
+  mutate(group_value = as.character(group_value))
+```
+
+```{r supp-table2}
+make_contributor_gt <- function(data, title_text, group_col_label = NULL) {
+  col_spec <- list(
+    short_label        = "Indicator", unit = "Unit",
+    milestone          = "Benchmark Value",
+    n_countries        = "# Contributing Countries",
+    total_countries    = "Total # with Data",
+    year_range         = "Year Range",
+    percentile_used    = "Method",
+    countries_display  = "Contributing Countries (Values)"
+  )
+  if (!is.null(group_col_label)) col_spec[["group_value"]] <- group_col_label
+
+  gt_tbl <- data %>%
+    select(theme, short_label, unit, any_of("group_value"), milestone,
+           n_countries, total_countries, year_range, percentile_used, countries_display) %>%
+    arrange(theme, short_label) %>%
+    gt(groupname_col = "theme") %>%
+    opt_table_font(font = "sans-serif", size = px(24)) %>%
+    tab_header(title = md(title_text)) %>%
+    fmt_number(columns = milestone, decimals = 1) %>%
+    fmt_missing(columns = everything(), missing_text = "-") %>%
+    cols_label(.list = col_spec) %>%
+    cols_width(short_label ~ px(160), unit ~ px(120), milestone ~ px(130),
+               n_countries ~ px(140), total_countries ~ px(140),
+               year_range ~ px(110), percentile_used ~ px(200),
+               countries_display ~ px(600)) %>%
+    tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+              locations = cells_column_labels()) %>%
+    tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+              locations = cells_row_groups()) %>%
+    tab_style(style = cell_text(whitespace = "normal"),
+              locations = cells_body(columns = countries_display)) %>%
+    tab_style(style = cell_text(align = "left"), locations = cells_title(groups = "title")) %>%
+    tab_options(
+      table.border.top.width = px(0), table.border.bottom.width = px(0),
+      heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+      column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+      row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+      table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+      row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+      heading.background.color = "white", heading.title.font.size = px(36),
+      column_labels.font.size = px(28), table.font.size = px(24),
+      data_row.padding = px(4), column_labels.padding = px(4),
+      table.margin.left = px(0), table.margin.right = px(0)
+    )
+  gt_tbl
+}
+
+supp_table2 <- make_contributor_gt(global_data_contrib,
+                                    "**Supplementary Table 2. Global Benchmark Contributors**")
+save_table_as_html_png_pdf(supp_table2, "Supplementary_Table_2", vwidth = 2800, vheight = 2000, zoom = 3)
+cat("✓ Supplementary Table 2 saved\n")
+```
+
+```{r supp-table3}
+supp_table3 <- make_contributor_gt(regional_data_contrib,
+                                    "**Supplementary Table 3. Regional Benchmark Contributors**",
+                                    group_col_label = "Region")
+save_table_as_html_png_pdf(supp_table3, "Supplementary_Table_3", vwidth = 2800, vheight = 2000, zoom = 3)
+cat("✓ Supplementary Table 3 saved\n")
+```
+
+```{r supp-table4}
+supp_table4 <- make_contributor_gt(income_data_contrib,
+                                    "**Supplementary Table 4. Income Group Benchmark Contributors**",
+                                    group_col_label = "Income Group")
+save_table_as_html_png_pdf(supp_table4, "Supplementary_Table_4", vwidth = 2800, vheight = 2000, zoom = 3)
+cat("✓ Supplementary Table 4 saved\n")
+```
+
+## Supplementary Table 5 – Global Mean Distances
+
+```{r supp-table5}
+prepare_indicator_data <- function(indicator_data) {
+  indicator_data %>%
+    select(short_label, unit, theme, desirable_direction) %>%
+    distinct() %>% group_by(short_label) %>% slice_head(n = 1) %>% ungroup()
+}
+
+create_distance_gt <- function(data, title_text, subtitle_text, footnote_text,
+                                value_cols, pivot_col = NULL,
+                                col_labels = list()) {
+  data %>%
+    gt(groupname_col = "theme") %>%
+    tab_header(title = title_text, subtitle = subtitle_text) %>%
+    fmt_number(columns = all_of(value_cols), decimals = 1) %>%
+    fmt_missing(columns = everything(), missing_text = "-") %>%
+    cols_label(.list = col_labels) %>%
+    tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+              locations = cells_column_labels()) %>%
+    tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+              locations = cells_row_groups()) %>%
+    tab_style(style = cell_text(align = "left"),
+              locations = cells_title(groups = c("title", "subtitle"))) %>%
+    tab_footnote(footnote = md(footnote_text),
+                 locations = cells_title(groups = "subtitle")) %>%
+    tab_options(
+      table.border.top.width = px(0), table.border.bottom.width = px(0),
+      heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+      column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+      row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+      table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+      row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+      heading.background.color = "white", heading.title.font.size = px(36),
+      heading.subtitle.font.size = px(28), column_labels.font.size = px(28),
+      table.font.size = px(24), data_row.padding = px(4),
+      column_labels.padding = px(4), table.margin.left = px(0), table.margin.right = px(0)
+    )
+}
+
+clean_ind <- prepare_indicator_data(analysis_data)
+
+supp5_data <- mean_benchmark_distances %>%
+  filter(group_type == "Global") %>%
+  distinct(short_label, .keep_all = TRUE) %>%
+  left_join(clean_ind, by = "short_label") %>%
+  mutate(
+    direction = ifelse(desirable_direction == 1, "↑", "↓"),
+    theme     = ifelse(theme %in% c("environment, natural resources, and production",
+                                     "Environment, natural resources, and production"),
+                       "Environment, Natural Resources, and Production", theme),
+    mean_dir_abs_distance_to_global = ifelse(short_label == "Share of agriculture in GDP",
+                                              NA, mean_dir_abs_distance_to_global)
+  ) %>%
+  group_by(theme) %>% arrange(theme, short_label) %>% ungroup() %>%
+  select(theme, short_label, unit, direction,
+         mean_dir_abs_distance_to_target, mean_dir_abs_distance_to_global,
+         mean_dir_abs_distance_to_regional, mean_dir_abs_distance_to_income)
+
+supp_table5 <- create_distance_gt(
+  supp5_data,
+  title_text    = "Supplementary Table 5. Global Mean Absolute Distances to Global Target and Benchmarks",
+  subtitle_text = "Distances in original indicator units; positive = above benchmark.",
+  footnote_text = "**Directional Distances:** Positive = global mean above target/benchmark; negative = below. For 'lower is better' (↓) indicators the signs are reversed.",
+  value_cols    = c("mean_dir_abs_distance_to_target", "mean_dir_abs_distance_to_global",
+                    "mean_dir_abs_distance_to_regional", "mean_dir_abs_distance_to_income"),
+  col_labels    = list(short_label = "Indicator", unit = "Unit", direction = "Direction",
+                       mean_dir_abs_distance_to_target   = "Distance to Global Target",
+                       mean_dir_abs_distance_to_global   = "Distance to Global Benchmark",
+                       mean_dir_abs_distance_to_regional = "Distance to Regional Benchmark",
+                       mean_dir_abs_distance_to_income   = "Distance to Income Benchmark")
+)
+save_table_as_html_png_pdf(supp_table5, "Supplementary_Table_5")
+cat("✓ Supplementary Table 5 saved\n")
+```
+
+## Supplementary Tables 6–7 – Regional Distances
+
+```{r supp-tables-6-7}
+make_regional_pivot_gt <- function(mean_distances_data, indicator_data,
+                                    dist_col, title_text, subtitle_text, footnote_text,
+                                    filter_fn = NULL) {
+  clean_ind <- prepare_indicator_data(indicator_data)
+  region_columns <- c("Africa", "Americas", "Asia", "Europe", "Oceania")
+
+  df <- mean_distances_data %>%
+    filter(group_type == "Regional") %>%
+    { if (!is.null(filter_fn)) filter_fn(.) else . } %>%
+    distinct(short_label, group_name, .keep_all = TRUE) %>%
+    left_join(clean_ind, by = "short_label") %>%
+    mutate(
+      direction = ifelse(desirable_direction == 1, "↑", "↓"),
+      theme     = ifelse(theme %in% c("environment, natural resources, and production",
+                                       "Environment, natural resources, and production"),
+                         "Environment, Natural Resources, and Production", theme)
+    ) %>%
+    group_by(theme) %>% arrange(theme, short_label) %>% ungroup() %>%
+    select(theme, short_label, unit, direction, group_name, all_of(dist_col)) %>%
+    pivot_wider(names_from = group_name, values_from = all_of(dist_col))
+
+  for (r in setdiff(region_columns, names(df))) df[[r]] <- NA
+  df <- df %>% select(theme, short_label, unit, direction, all_of(region_columns))
+
+  df %>%
+    gt(groupname_col = "theme") %>%
+    tab_header(title = title_text, subtitle = subtitle_text) %>%
+    fmt_number(columns = all_of(region_columns), decimals = 1) %>%
+    fmt_missing(columns = everything(), missing_text = "-") %>%
+    cols_label(short_label = "Indicator", unit = "Unit", direction = "Direction") %>%
+    tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+              locations = cells_column_labels()) %>%
+    tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+              locations = cells_row_groups()) %>%
+    tab_style(style = cell_text(align = "left"),
+              locations = cells_title(groups = c("title", "subtitle"))) %>%
+    tab_footnote(footnote = md(footnote_text), locations = cells_title(groups = "subtitle")) %>%
+    tab_options(
+      table.border.top.width = px(0), table.border.bottom.width = px(0),
+      heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+      column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+      row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+      table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+      row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+      heading.background.color = "white", heading.title.font.size = px(36),
+      heading.subtitle.font.size = px(28), column_labels.font.size = px(28),
+      table.font.size = px(24), data_row.padding = px(4), column_labels.padding = px(4),
+      table.margin.left = px(0), table.margin.right = px(0)
+    )
+}
+
+# Table 6: regional distance to global target (indicators with targets only)
+valid_targets <- final_table %>% filter(!is.na(target)) %>% pull(short_label)
+
+supp_table6 <- make_regional_pivot_gt(
+  mean_benchmark_distances, analysis_data,
+  dist_col      = "mean_dir_abs_distance_to_target",
+  title_text    = "Supplementary Table 6. Mean Directional Regional Distances to Global Target",
+  subtitle_text = "Distances in original indicator units (positive = above target). Only indicators with defined targets shown.",
+  footnote_text = "**Directional Distances:** Positive = region above target; negative = below. For ↓ indicators signs are reversed.",
+  filter_fn     = function(d) filter(d, short_label %in% valid_targets)
+)
+save_table_as_html_png_pdf(supp_table6, "Supplementary_Table_6")
+
+# Table 7: regional distance to global benchmark
+supp_table7 <- make_regional_pivot_gt(
+  mean_benchmark_distances, analysis_data,
+  dist_col      = "mean_dir_abs_distance_to_global",
+  title_text    = "Supplementary Table 7. Mean Directional Regional Distances to Global Benchmark",
+  subtitle_text = "Distances in original indicator units (positive = above benchmark).",
+  footnote_text = "**Directional Distances:** Positive = region above benchmark. For ↓ indicators signs are reversed."
+)
+save_table_as_html_png_pdf(supp_table7, "Supplementary_Table_7")
+cat("✓ Supplementary Tables 6 & 7 saved\n")
+```
+
+## Supplementary Table 8 – BAU Trajectories by Region
+
+```{r supp-table8}
+indicator_directions <- bau_expanded %>%
+  filter(!is.na(desirable_direction)) %>%
+  select(short_label, desirable_direction) %>% distinct() %>%
+  mutate(direction_arrow = case_when(
+    desirable_direction ==  1 ~ "↑",
+    desirable_direction == -1 ~ "↓",
+    TRUE ~ "-"
+  ))
+
+regional_bau_wide <- bau_expanded %>%
+  filter(!is.na(bau_cagr)) %>%
+  group_by(`UN Continental Region`, short_label, theme) %>%
+  summarise(bau_cagr = round(mean(bau_cagr, na.rm = TRUE), 1), .groups = "drop") %>%
+  mutate(theme = ifelse(theme == "Environment, natural resources, and production",
+                        "Environment, Natural Resources, and Production", theme)) %>%
+  pivot_wider(names_from = `UN Continental Region`, values_from = bau_cagr) %>%
+  left_join(indicator_directions, by = "short_label") %>%
+  select(short_label, theme, direction_arrow, everything(), -desirable_direction) %>%
+  arrange(theme, short_label)
+
+region_cols_bau <- setdiff(names(regional_bau_wide), c("short_label", "theme", "direction_arrow"))
+
+supp_table8 <- regional_bau_wide %>%
+  gt(groupname_col = "theme") %>%
+  opt_table_font(font = "sans-serif", size = px(24)) %>%
+  tab_header(
+    title    = md("**Supplementary Table 8. Business-as-usual Trajectories, by Region (% change per year)**"),
+    subtitle = md("Historical trends 2015–2023. Negative = decreasing trend; positive = increasing trend.")
+  ) %>%
+  fmt_number(columns = all_of(region_cols_bau), decimals = 1) %>%
+  fmt_missing(columns = everything(), missing_text = "-") %>%
+  cols_label(short_label = "Indicator", direction_arrow = "Desirable Direction") %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_column_labels()) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_row_groups()) %>%
+  tab_style(style = cell_text(align = "left"),
+            locations = cells_title(groups = c("title", "subtitle"))) %>%
+  tab_options(
+    table.border.top.width = px(0), table.border.bottom.width = px(0),
+    heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+    column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+    row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+    table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+    row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+    heading.background.color = "white", heading.title.font.size = px(36),
+    heading.subtitle.font.size = px(28), column_labels.font.size = px(28),
+    table.font.size = px(24), data_row.padding = px(4), column_labels.padding = px(4),
+    table.margin.left = px(0), table.margin.right = px(0)
+  )
+
+save_table_as_html_png_pdf(supp_table8, "Supplementary_Table_8")
+cat("✓ Supplementary Table 8 saved\n")
+```
+
+## Supplementary Table 9 – Challenge Categories
+
+```{r supp-table9}
+classified_2030_t9 <- classified_2030 %>%
+  filter(!short_label %in% c(exclude_indicators_main, "Share of agriculture in GDP"))
+
+supp9_data <- classified_2030_t9 %>%
+  group_by(theme, short_label, desirable_direction) %>%
+  summarise(
+    n_on_target        = sum(challenge_category == "On target or target met", na.rm = TRUE),
+    n_moderate_progress= sum(challenge_category == "Moderate progress",       na.rm = TRUE),
+    n_marginal_progress= sum(challenge_category == "Marginal progress",        na.rm = TRUE),
+    n_stagnation       = sum(challenge_category == "Stagnation",              na.rm = TRUE),
+    n_regression       = sum(challenge_category == "Regression",              na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    classified_2030_t9 %>%
+      group_by(short_label) %>%
+      summarise(avg_global_cagr = mean(bau_cagr, na.rm = TRUE), .groups = "drop"),
+    by = "short_label"
+  ) %>%
+  mutate(
+    direction_arrow = case_when(desirable_direction ==  1 ~ "↑",
+                                desirable_direction == -1 ~ "↓", TRUE ~ "?"),
+    theme = case_when(
+      theme %in% c("environment, natural resources, and production",
+                   "Environment, natural resources, and production") ~
+        "Environment, Natural Resources, and Production",
+      TRUE ~ theme)
+  ) %>%
+  arrange(theme, short_label)
+
+supp_table9 <- supp9_data %>%
+  select(theme, short_label, direction_arrow, avg_global_cagr,
+         n_on_target, n_moderate_progress, n_marginal_progress, n_stagnation, n_regression) %>%
+  gt(groupname_col = "theme") %>%
+  opt_table_font(font = "sans-serif", size = px(24)) %>%
+  tab_header(
+    title    = md("**Supplementary Table 9. Current Mean Global % Change per Year and Challenge Categories**"),
+    subtitle = md("*Challenge categories based on BAU CAGR projections to 2030 vs. targets/benchmarks.*")
+  ) %>%
+  fmt_number(columns = avg_global_cagr, decimals = 1) %>%
+  fmt_missing(columns = everything(), missing_text = "-") %>%
+  cols_label(
+    short_label         = md("**Indicator**"),
+    direction_arrow     = md("**Direction**"),
+    avg_global_cagr     = md("**Mean Global CAGR (% per year)**"),
+    n_on_target         = md("**On Target**"),
+    n_moderate_progress = md("**Moderate Progress**"),
+    n_marginal_progress = md("**Marginal Progress**"),
+    n_stagnation        = md("**Stagnation**"),
+    n_regression        = md("**Regression**")
+  ) %>%
+  cols_align(align = "center", columns = everything()) %>%
+  cols_align(align = "left",   columns = c(short_label, direction_arrow)) %>%
+  tab_style(style = list(cell_fill(color = "#41AB5D")),
+            locations = cells_body(columns = n_on_target)) %>%
+  tab_style(style = list(cell_fill(color = "#A1DAB4")),
+            locations = cells_body(columns = n_moderate_progress)) %>%
+  tab_style(style = list(cell_fill(color = "#41B6C4")),
+            locations = cells_body(columns = n_marginal_progress)) %>%
+  tab_style(style = list(cell_fill(color = "#225EA8")),
+            locations = cells_body(columns = n_stagnation)) %>%
+  tab_style(style = list(cell_fill(color = "#08306B")),
+            locations = cells_body(columns = n_regression)) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_column_labels()) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_row_groups()) %>%
+  tab_style(style = cell_text(align = "left"),
+            locations = cells_title(groups = c("title", "subtitle"))) %>%
+  tab_options(
+    table.border.top.width = px(0), table.border.bottom.width = px(0),
+    heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+    column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+    row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+    table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+    row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+    heading.background.color = "white", heading.title.font.size = px(36),
+    heading.subtitle.font.size = px(28), column_labels.font.size = px(28),
+    table.font.size = px(24), data_row.padding = px(4), column_labels.padding = px(4),
+    table.margin.left = px(0), table.margin.right = px(0)
+  )
+
+save_table_as_html_png_pdf(supp_table9, "Supplementary_Table_9",
+                           vwidth = 1200, vheight = 800, zoom = 4)
+cat("✓ Supplementary Table 9 saved\n")
+```
+
+## Supplementary Tables 10–11 – Regional & Income Distances to Own Benchmarks
+
+```{r supp-tables-10-11}
+# Table 10: regional distance to regional benchmark
+supp_table10 <- make_regional_pivot_gt(
+  mean_benchmark_distances, analysis_data,
+  dist_col      = "mean_dir_abs_distance_to_regional",
+  title_text    = "Supplementary Table 10. Mean Directional Regional Distances to Regional Benchmark",
+  subtitle_text = "Distances in original indicator units (positive = above regional benchmark).",
+  footnote_text = "**Directional Distances:** Positive = region above its own benchmark. For ↓ indicators signs are reversed."
+)
+save_table_as_html_png_pdf(supp_table10, "Supplementary_Table_10")
+
+# Table 11: income group distance to income benchmark
+income_cols <- c("Low income", "Lower middle income", "Upper middle income", "High income")
+
+supp11_data <- mean_benchmark_distances %>%
+  filter(group_type == "Income", !is.na(group_name)) %>%
+  distinct(short_label, group_name, .keep_all = TRUE) %>%
+  left_join(prepare_indicator_data(analysis_data), by = "short_label",
+            relationship = "many-to-many") %>%
+  mutate(
+    direction = ifelse(desirable_direction == 1, "↑", "↓"),
+    theme     = ifelse(theme %in% c("environment, natural resources, and production",
+                                     "Environment, natural resources, and production"),
+                       "Environment, Natural Resources, and Production", theme)
+  ) %>%
+  group_by(theme) %>% arrange(theme, short_label) %>% ungroup() %>%
+  select(theme, short_label, unit, direction, group_name, mean_dir_abs_distance_to_income) %>%
+  pivot_wider(names_from = group_name, values_from = mean_dir_abs_distance_to_income)
+
+for (col in setdiff(income_cols, names(supp11_data))) supp11_data[[col]] <- NA
+supp11_data <- supp11_data %>% select(theme, short_label, unit, direction, all_of(income_cols))
+
+supp_table11 <- supp11_data %>%
+  gt(groupname_col = "theme") %>%
+  tab_header(
+    title    = "Supplementary Table 11. Mean Directional Income Group Distances to Income Benchmark",
+    subtitle = "Distances in original indicator units (positive = above benchmark)."
+  ) %>%
+  fmt_number(columns = all_of(income_cols), decimals = 1) %>%
+  fmt_missing(columns = everything(), missing_text = "-") %>%
+  cols_label(short_label = "Indicator", unit = "Unit", direction = "Direction") %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_column_labels()) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_row_groups()) %>%
+  tab_style(style = cell_text(align = "left"),
+            locations = cells_title(groups = c("title", "subtitle"))) %>%
+  tab_footnote(
+    footnote = md("**Directional Distances:** Positive = income group above benchmark. For ↓ indicators signs are reversed."),
+    locations = cells_title(groups = "subtitle")
+  ) %>%
+  tab_options(
+    table.border.top.width = px(0), table.border.bottom.width = px(0),
+    heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+    column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+    row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+    table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+    row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+    heading.background.color = "white", heading.title.font.size = px(36),
+    heading.subtitle.font.size = px(28), column_labels.font.size = px(28),
+    table.font.size = px(24), data_row.padding = px(4), column_labels.padding = px(4),
+    table.margin.left = px(0), table.margin.right = px(0)
+  )
+
+save_table_as_html_png_pdf(supp_table11, "Supplementary_Table_11")
+cat("✓ Supplementary Tables 10 & 11 saved\n")
+```
+
+## Supplementary Tables 12–13 – Country Counts for Regional Averages
+
+```{r supp-tables-12-13}
+make_country_count_gt <- function(ema_cagr_data, benchmarks,
+                                   count_col, indicator_filter_fn,
+                                   title_text, subtitle_text) {
+  valid_inds <- indicator_filter_fn(benchmarks)
+
+  regional_counts <- ema_cagr_data %>%
+    filter(group_type == "Regional", short_label %in% valid_inds) %>%
+    select(theme, short_label, group_name, all_of(count_col)) %>%
+    mutate(theme = ifelse(theme == "Environment, natural resources, and production",
+                          "Environment, Natural Resources, and Production", theme)) %>%
+    pivot_wider(names_from = group_name, values_from = all_of(count_col), values_fill = 0) %>%
+    mutate(across(where(is.numeric), ~ ifelse(.x == 0, NA, .x))) %>%
+    arrange(theme, short_label)
+
+  regional_counts %>%
+    gt(groupname_col = "theme") %>%
+    opt_table_font(font = "sans-serif", size = px(24)) %>%
+    tab_header(title = md(title_text), subtitle = md(subtitle_text)) %>%
+    fmt_number(columns = where(is.numeric), decimals = 0) %>%
+    fmt_missing(columns = everything(), missing_text = "-") %>%
+    cols_label(short_label = "Indicator") %>%
+    cols_width(short_label ~ px(250), everything() ~ px(100)) %>%
+    tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+              locations = cells_column_labels()) %>%
+    tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+              locations = cells_row_groups()) %>%
+    tab_style(style = cell_text(align = "left"),
+              locations = cells_title(groups = c("title", "subtitle"))) %>%
+    tab_options(
+      table.border.top.width = px(0), table.border.bottom.width = px(0),
+      heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+      column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+      row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+      table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+      row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+      heading.background.color = "white", heading.title.font.size = px(36),
+      heading.subtitle.font.size = px(28), column_labels.font.size = px(28),
+      table.font.size = px(24), data_row.padding = px(4), column_labels.padding = px(4),
+      table.margin.left = px(0), table.margin.right = px(0)
+    )
+}
+
+supp_table12 <- make_country_count_gt(
+  ema_cagr_summaries, final_table,
+  count_col         = "countries_with_ema_target_cagr",
+  indicator_filter_fn = function(b) filter(b, !is.na(target)) %>% pull(short_label),
+  title_text    = "**Supplementary Table 12. Country Counts for Regional Averages (Figure 2 – Global Targets)**",
+  subtitle_text = "Count of countries contributing to each regional average in Figure 2."
+)
+save_table_as_html_png_pdf(supp_table12, "Supplementary_Table_12")
+
+supp_table13 <- make_country_count_gt(
+  ema_cagr_summaries, final_table,
+  count_col         = "countries_with_ema_global_cagr",
+  indicator_filter_fn = function(b)
+    filter(b, !is.na(benchmark_Global),
+              !short_label %in% c("Share of agriculture in GDP", "Cropland change")) %>%
+    pull(short_label),
+  title_text    = "**Supplementary Table 13. Country Counts for Regional Averages (Figure 3 – Global Benchmarks)**",
+  subtitle_text = "Count of countries contributing to each regional average in Figure 3."
+)
+save_table_as_html_png_pdf(supp_table13, "Supplementary_Table_13")
+cat("✓ Supplementary Tables 12 & 13 saved\n")
+```
+
+## Supplementary Table 14 – Simple vs. Comprehensive Approach
+
+```{r supp-table14}
+# Simplistic trajectories (latest value, no EMA smoothing)
+calculate_simplistic_trajectories <- function(data, benchmarks) {
+  latest_country_data <- data %>%
+    group_by(country, short_label) %>%
+    arrange(desc(year)) %>% filter(!is.na(value)) %>% slice_head(n = 1) %>%
+    mutate(baseline_year = year, baseline_value = value) %>% ungroup()
+
+  latest_country_data %>%
+    left_join(select(benchmarks, short_label, target, starts_with("benchmark_")),
+              by = "short_label") %>%
+    rowwise() %>%
+    mutate(
+      cagr_to_target_2030 = case_when(
+        short_label %in% c("Fruit availability", "Vegetable availability") &
+          baseline_value > target & desirable_direction == 1 ~ 0,
+        short_label == "Cropland change" &
+          baseline_value <= target & desirable_direction == -1 ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, target, 2030)),
+      cagr_to_global_benchmark_2030 = case_when(
+        short_label %in% c("Fruit availability", "Vegetable availability") &
+          baseline_value > benchmark_Global & desirable_direction == 1 ~ 0,
+        short_label == "Cropland change" &
+          baseline_value <= target & desirable_direction == -1 ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, benchmark_Global, 2030)),
+      cagr_to_target_2050 = case_when(
+        short_label %in% c("Fruit availability", "Vegetable availability") &
+          baseline_value > target & desirable_direction == 1 ~ 0,
+        short_label == "Cropland change" &
+          baseline_value <= target & desirable_direction == -1 ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, target, 2050)),
+      cagr_to_global_benchmark_2050 = case_when(
+        short_label %in% c("Fruit availability", "Vegetable availability") &
+          baseline_value > benchmark_Global & desirable_direction == 1 ~ 0,
+        short_label == "Cropland change" &
+          baseline_value <= target & desirable_direction == -1 ~ 0,
+        TRUE ~ calculate_accelerated_cagr(baseline_value, baseline_year, benchmark_Global, 2050))
+    ) %>%
+    ungroup()
+}
+
+accelerated_trajectories <- calculate_simplistic_trajectories(analysis_data, final_table)
+
+simple_global_means_t14 <- accelerated_trajectories %>%
+  group_by(short_label) %>%
+  summarise(
+    theme = first(theme),
+    mean_cagr_to_target_2030            = mean(cagr_to_target_2030,            na.rm = TRUE),
+    mean_cagr_to_global_benchmark_2030  = mean(cagr_to_global_benchmark_2030,  na.rm = TRUE),
+    mean_cagr_to_target_2050            = mean(cagr_to_target_2050,            na.rm = TRUE),
+    mean_cagr_to_global_benchmark_2050  = mean(cagr_to_global_benchmark_2050,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ema_global_means_t14 <- ema_accelerated_trajectories %>%
+  group_by(short_label) %>%
+  summarise(
+    mean_ema_cagr_to_target_2030           = mean(ema_cagr_to_target_2030,           na.rm = TRUE),
+    mean_ema_cagr_to_global_benchmark_2030 = mean(ema_cagr_to_global_benchmark_2030, na.rm = TRUE),
+    mean_ema_cagr_to_target_2050           = mean(ema_cagr_to_target_2050,           na.rm = TRUE),
+    mean_ema_cagr_to_global_benchmark_2050 = mean(ema_cagr_to_global_benchmark_2050, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+comparison_data <- simple_global_means_t14 %>%
+  left_join(ema_global_means_t14, by = "short_label") %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.nan(.) | is.infinite(.), NA, .)),
+         diff_target_2030  = mean_ema_cagr_to_target_2030           - mean_cagr_to_target_2030,
+         diff_global_2030  = mean_ema_cagr_to_global_benchmark_2030 - mean_cagr_to_global_benchmark_2030,
+         diff_target_2050  = mean_ema_cagr_to_target_2050           - mean_cagr_to_target_2050,
+         diff_global_2050  = mean_ema_cagr_to_global_benchmark_2050 - mean_cagr_to_global_benchmark_2050,
+         theme = case_when(
+           theme == "Environment, natural resources, and production" ~
+             "Environment, Natural Resources, and Production",
+           TRUE ~ theme)
+  ) %>%
+  arrange(theme, short_label)
+
+diff_cols <- c("diff_target_2030", "diff_global_2030", "diff_target_2050", "diff_global_2050")
+num_cols  <- c("mean_cagr_to_target_2030", "mean_cagr_to_global_benchmark_2030",
+               "mean_ema_cagr_to_target_2030", "mean_ema_cagr_to_global_benchmark_2030",
+               "diff_target_2030", "diff_global_2030",
+               "mean_cagr_to_target_2050", "mean_cagr_to_global_benchmark_2050",
+               "mean_ema_cagr_to_target_2050", "mean_ema_cagr_to_global_benchmark_2050",
+               "diff_target_2050", "diff_global_2050")
+
+supp_table14 <- comparison_data %>%
+  gt(groupname_col = "theme") %>%
+  tab_header(
+    title    = md("**Supplementary Table 14. Comparison of Simple vs. Comprehensive Approach**"),
+    subtitle = md("*Required CAGR (% per year) by Indicator*")
+  ) %>%
+  fmt_number(columns = all_of(num_cols), decimals = 1) %>%
+  fmt_missing(columns = everything(), missing_text = "-") %>%
+  tab_spanner(label = "CAGR to Global Target 2030",
+              columns = c(mean_cagr_to_target_2030, mean_ema_cagr_to_target_2030, diff_target_2030)) %>%
+  tab_spanner(label = "CAGR to Global Benchmark 2030",
+              columns = c(mean_cagr_to_global_benchmark_2030, mean_ema_cagr_to_global_benchmark_2030, diff_global_2030)) %>%
+  tab_spanner(label = "CAGR to Global Target 2050",
+              columns = c(mean_cagr_to_target_2050, mean_ema_cagr_to_target_2050, diff_target_2050)) %>%
+  tab_spanner(label = "CAGR to Global Benchmark 2050",
+              columns = c(mean_cagr_to_global_benchmark_2050, mean_ema_cagr_to_global_benchmark_2050, diff_global_2050)) %>%
+  cols_label(
+    short_label                          = md("**Indicator**"),
+    mean_cagr_to_target_2030             = "Simple",
+    mean_ema_cagr_to_target_2030         = "Comprehensive",
+    diff_target_2030                     = "Diff",
+    mean_cagr_to_global_benchmark_2030   = "Simple",
+    mean_ema_cagr_to_global_benchmark_2030 = "Comprehensive",
+    diff_global_2030                     = "Diff",
+    mean_cagr_to_target_2050             = "Simple",
+    mean_ema_cagr_to_target_2050         = "Comprehensive",
+    diff_target_2050                     = "Diff",
+    mean_cagr_to_global_benchmark_2050   = "Simple",
+    mean_ema_cagr_to_global_benchmark_2050 = "Comprehensive",
+    diff_global_2050                     = "Diff"
+  ) %>%
+  # Blue = EMA requires less; pink = EMA requires more
+  tab_style(style = cell_fill(color = "#E0F3F8"),
+            locations = cells_body(columns = diff_target_2030,
+                                   rows = diff_target_2030 < -0.05)) %>%
+  tab_style(style = cell_fill(color = "#E0F3F8"),
+            locations = cells_body(columns = diff_global_2030,
+                                   rows = diff_global_2030 < -0.05)) %>%
+  tab_style(style = cell_fill(color = "#E0F3F8"),
+            locations = cells_body(columns = diff_target_2050,
+                                   rows = diff_target_2050 < -0.05)) %>%
+  tab_style(style = cell_fill(color = "#E0F3F8"),
+            locations = cells_body(columns = diff_global_2050,
+                                   rows = diff_global_2050 < -0.05)) %>%
+  tab_style(style = cell_fill(color = "#FEE0D2"),
+            locations = cells_body(columns = diff_target_2030,
+                                   rows = diff_target_2030 > 0.05)) %>%
+  tab_style(style = cell_fill(color = "#FEE0D2"),
+            locations = cells_body(columns = diff_global_2030,
+                                   rows = diff_global_2030 > 0.05)) %>%
+  tab_style(style = cell_fill(color = "#FEE0D2"),
+            locations = cells_body(columns = diff_target_2050,
+                                   rows = diff_target_2050 > 0.05)) %>%
+  tab_style(style = cell_fill(color = "#FEE0D2"),
+            locations = cells_body(columns = diff_global_2050,
+                                   rows = diff_global_2050 > 0.05)) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_row_groups()) %>%
+  tab_footnote(
+    footnote = "Blue: Comprehensive requires lower CAGR than Simple. Pink: Comprehensive requires higher CAGR.",
+    locations = cells_column_labels(columns = all_of(diff_cols))
+  ) %>%
+  tab_source_note(source_note = "CAGR = Compound Annual Growth Rate. Dash = no target or benchmark.") %>%
+  tab_options(
+    table.border.top.width = px(0), table.border.bottom.width = px(0),
+    heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+    column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+    row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+    table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+    row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+    heading.background.color = "white", heading.title.font.size = px(36),
+    heading.subtitle.font.size = px(28), column_labels.font.size = px(28),
+    table.font.size = px(24), data_row.padding = px(4), column_labels.padding = px(4),
+    table.margin.left = px(0), table.margin.right = px(0)
+  )
+
+save_table_as_html_png_pdf(supp_table14, "Supplementary_Table_14",
+                           vwidth = 1500, vheight = 800, zoom = 4)
+cat("✓ Supplementary Table 14 saved\n")
+```
+
+---
+
+# Part 4 – Supplementary Figures 1–51
+
+## Supplementary Figure 1 – Global Means vs. Targets
+
+```{r supp-fig1, fig.cap="Supplementary Figure 1. Comparing Current Global Means to Global Targets, by Indicator Direction"}
+global_means_sf1 <- country_distances_df %>%
+  group_by(short_label) %>%
+  summarise(global_mean = mean(value, na.rm = TRUE), .groups = "drop")
+
+sf1_plot_data <- final_table %>%
+  filter(!is.na(target)) %>%
+  select(short_label, target) %>%
+  inner_join(
+    analysis_data %>% select(short_label, unit, desirable_direction, theme) %>%
+      distinct() %>% group_by(short_label) %>% slice_head(n = 1) %>% ungroup(),
+    by = "short_label"
+  ) %>%
+  inner_join(global_means_sf1, by = "short_label") %>%
+  mutate(
+    theme = ifelse(theme == "Environment, natural resources, and production",
+                   "Environment, Natural Resources, and Production", theme),
+    direction_group    = ifelse(desirable_direction == 1,
+                                "Higher Values Are Better", "Lower Values Are Better"),
+    indicator_label    = paste0(short_label, " (", unit, ")"),
+    target_met         = case_when(
+      desirable_direction ==  1 & global_mean >= target ~ TRUE,
+      desirable_direction == -1 & global_mean <= target ~ TRUE,
+      TRUE ~ FALSE),
+    abs_distance       = abs(global_mean - target),
+    segment_start      = pmin(global_mean, target),
+    segment_end        = pmax(global_mean, target)
+  ) %>%
+  arrange(direction_group, theme, desc(abs_distance)) %>%
+  mutate(indicator_label = factor(indicator_label, levels = rev(unique(indicator_label))),
+         direction_group  = factor(direction_group,
+                                   levels = c("Higher Values Are Better", "Lower Values Are Better")))
+
+sf1_long <- sf1_plot_data %>%
+  pivot_longer(cols = c(global_mean, target), names_to = "value_type", values_to = "value")
+
+p_supp1 <- ggplot() +
+  geom_segment(data = sf1_plot_data,
+               aes(x = segment_start, xend = segment_end,
+                   y = indicator_label, yend = indicator_label),
+               color = "gray60", linewidth = 1.0) +
+  geom_point(data = sf1_long,
+             aes(x = value, y = indicator_label,
+                 color = value_type, shape = value_type), size = 4.0) +
+  scale_x_continuous(labels = scales::label_comma(accuracy = 0.1)) +
+  scale_color_manual(values = c(global_mean = "#1e88e5", target = "#000000"),
+                     labels = c(global_mean = "Global Mean", target = "Target")) %>%
+  scale_shape_manual(values = c(global_mean = 16, target = 18),
+                     labels = c(global_mean = "Global Mean", target = "Target")) +
+  facet_grid(theme ~ direction_group, scales = "free", space = "free_y",
+             labeller = labeller(theme = label_wrap_gen(12))) +
+  theme_minimal() +
+  theme(
+    axis.text.y       = element_text(size = 8, face = "bold"),
+    axis.text.x       = element_text(size = 9),
+    strip.text.y      = element_text(size = 8, face = "bold", angle = 0, hjust = 0),
+    strip.text.x      = element_text(size = 10, face = "bold", color = "white"),
+    strip.background.x= element_rect(fill = "#37474f", color = NA),
+    panel.border      = element_rect(color = "gray80", fill = NA, linewidth = 0.5),
+    panel.spacing.x   = unit(0.8, "lines"),
+    legend.position   = "bottom", legend.title = element_blank(),
+    plot.title        = element_text(face = "bold", size = 11),
+    plot.subtitle     = element_text(size = 9)
+  ) +
+  labs(
+    title    = str_wrap("Supplementary Figure 1. Comparing Current Global Means to Global Targets, by Indicator Direction", 100),
+    subtitle = str_wrap("Indicators separated by desirable direction. Green lines indicate targets already met.", 120),
+    x = "Value", y = NULL
+  )
+
+print(p_supp1)
+ggsave(file.path(figtab_out, "Supplementary_Figure_1.png"), p_supp1,
+       width = STD_WIDTH * 1.2, height = STD_HEIGHT, dpi = STD_DPI, bg = "white")
+ggsave(file.path(figtab_out, "Supplementary_Figure_1.pdf"), p_supp1,
+       width = STD_WIDTH * 1.2, height = STD_HEIGHT, bg = "white")
+cat("✓ Supplementary Figure 1 saved\n")
+```
+
+## Supplementary Figure 2 – Global Means vs. Benchmarks
+
+```{r supp-fig2, fig.cap="Supplementary Figure 2. Comparing Current Global Means to Global Benchmarks, by Indicator Direction"}
+global_means_sf2 <- analysis_data %>%
+  group_by(short_label) %>%
+  filter(!is.na(value)) %>%
+  summarise(global_mean = mean(value, na.rm = TRUE), .groups = "drop")
+
+sf2_plot_data <- mean_benchmark_distances %>%
+  filter(group_type == "Global", !is.na(mean_dir_abs_distance_to_global),
+         short_label != "Share of agriculture in GDP") %>%
+  select(short_label, mean_dir_abs_distance_to_global) %>%
+  inner_join(
+    analysis_data %>% select(short_label, unit, desirable_direction, theme) %>%
+      distinct() %>% group_by(short_label) %>% slice_head(n = 1) %>% ungroup(),
+    by = "short_label"
+  ) %>%
+  inner_join(global_means_sf2, by = "short_label") %>%
+  inner_join(select(final_table, short_label, benchmark_Global), by = "short_label") %>%
+  mutate(
+    theme           = ifelse(theme == "Environment, natural resources, and production",
+                             "Environment, Natural Resources, and Production", theme),
+    direction_group = ifelse(desirable_direction == 1,
+                             "Higher Values Are Better", "Lower Values Are Better"),
+    indicator_label = paste0(short_label, " (", unit, ")"),
+    abs_distance    = abs(mean_dir_abs_distance_to_global)
+  ) %>%
+  arrange(direction_group, theme, desc(abs_distance)) %>%
+  mutate(indicator_label = factor(indicator_label, levels = rev(unique(indicator_label))),
+         direction_group  = factor(direction_group,
+                                   levels = c("Higher Values Are Better", "Lower Values Are Better")))
+
+sf2_long <- sf2_plot_data %>%
+  pivot_longer(cols = c(global_mean, benchmark_Global),
+               names_to = "value_type", values_to = "value")
+
+p_supp2 <- ggplot() +
+  geom_segment(data = sf2_plot_data,
+               aes(x = global_mean, xend = benchmark_Global,
+                   y = indicator_label, yend = indicator_label),
+               color = "gray60", linewidth = 1.0) +
+  geom_point(data = sf2_long,
+             aes(x = value, y = indicator_label,
+                 color = value_type, shape = value_type), size = 4.0) +
+  scale_x_continuous(labels = scales::label_comma(accuracy = 0.1)) +
+  scale_color_manual(values = c(global_mean = "#1e88e5", benchmark_Global = "#000000"),
+                     labels = c(global_mean = "Global Mean", benchmark_Global = "Global Benchmark")) +
+  scale_shape_manual(values = c(global_mean = 16, benchmark_Global = 18),
+                     labels = c(global_mean = "Global Mean", benchmark_Global = "Global Benchmark")) +
+  facet_grid(theme ~ direction_group, scales = "free", space = "free_y",
+             labeller = labeller(theme = label_wrap_gen(12))) +
+  theme_minimal() +
+  theme(
+    axis.text.y        = element_text(size = 8, face = "bold"),
+    axis.text.x        = element_text(size = 9),
+    strip.text.y       = element_text(size = 8, face = "bold", angle = 0, hjust = 0),
+    strip.text.x       = element_text(size = 10, face = "bold", color = "white"),
+    strip.background.x = element_rect(fill = "#37474f", color = NA),
+    panel.border       = element_rect(color = "gray80", fill = NA, linewidth = 0.5),
+    panel.spacing.x    = unit(0.8, "lines"),
+    legend.position    = "bottom", legend.title = element_blank(),
+    plot.title         = element_text(face = "bold", size = 11),
+    plot.subtitle      = element_text(size = 9)
+  ) +
+  labs(
+    title    = str_wrap("Supplementary Figure 2. Comparing Current Global Means to Global Benchmarks, by Indicator Direction", 100),
+    subtitle = str_wrap("Indicators separated by desirable direction.", 120),
+    x = "Value", y = NULL
+  )
+
+print(p_supp2)
+ggsave(file.path(figtab_out, "Supplementary_Figure_2.png"), p_supp2,
+       width = STD_WIDTH * 1.2, height = STD_HEIGHT, dpi = STD_DPI, bg = "white")
+ggsave(file.path(figtab_out, "Supplementary_Figure_2.pdf"), p_supp2,
+       width = STD_WIDTH * 1.2, height = STD_HEIGHT, bg = "white")
+cat("✓ Supplementary Figure 2 saved\n")
+```
+
+## Supplementary Figure 3 – Progress Toward 2050 Targets
+
+```{r supp-fig3, fig.cap="Supplementary Figure 3. Number of Countries by Progress Toward 2050 Target, by Challenge Category and Theme"}
+classified_2050_filtered <- classified_2050 %>%
+  filter(!short_label %in% c("Share of agriculture in GDP"))
+
+challenge_levels_2050 <- c("On target or target met", "Moderate progress",
+                            "Marginal progress", "Stagnation", "Regression", "Insufficient data")
+
+challenge_summary_2050 <- classified_2050_filtered %>%
+  filter(!is.na(challenge_category)) %>%
+  mutate(
+    theme = case_when(
+      theme == "Environment, natural resources, and production" ~
+        "Environment, Natural Resources, and Production",
+      TRUE ~ theme),
+    challenge_category = factor(challenge_category, levels = challenge_levels_2050)
+  ) %>%
+  group_by(theme, short_label, challenge_category) %>%
+  summarise(n_countries = n(), .groups = "drop")
+
+totals_2050 <- challenge_summary_2050 %>%
+  group_by(theme, short_label) %>% summarise(current_total = sum(n_countries), .groups = "drop")
+
+pad_insuff_2050 <- totals_2050 %>%
+  filter(current_total < 197) %>%
+  mutate(n_countries = 197 - current_total,
+         challenge_category = factor("Insufficient data", levels = challenge_levels_2050)) %>%
+  select(theme, short_label, challenge_category, n_countries)
+
+challenge_summary_2050 <- bind_rows(challenge_summary_2050, pad_insuff_2050) %>%
+  mutate(challenge_category = factor(challenge_category, levels = challenge_levels_2050))
+
+ordering_2050 <- challenge_summary_2050 %>%
+  group_by(theme, short_label) %>%
+  slice_max(n_countries, n = 1, with_ties = FALSE) %>%
+  mutate(category_priority = case_when(
+    challenge_category == "On target or target met" ~ 6,
+    challenge_category == "Moderate progress"       ~ 5,
+    challenge_category == "Marginal progress"        ~ 4,
+    challenge_category == "Stagnation"              ~ 3,
+    challenge_category == "Regression"              ~ 2,
+    TRUE                                            ~ 1
+  )) %>%
+  summarise(dominant_category = first(challenge_category),
+            category_priority = first(category_priority), .groups = "drop") %>%
+  left_join(
+    challenge_summary_2050 %>%
+      group_by(theme, short_label) %>%
+      summarise(prop_on_target = sum(n_countries[challenge_category == "On target or target met"],
+                                     na.rm = TRUE) / sum(n_countries), .groups = "drop"),
+    by = c("theme", "short_label")
+  )
+
+challenge_summary_2050 <- challenge_summary_2050 %>%
+  left_join(ordering_2050, by = c("theme", "short_label")) %>%
+  group_by(theme) %>%
+  mutate(order_within_theme = category_priority + prop_on_target / 1000) %>%
+  ungroup()
+
+custom_palette_2050 <- c(
+  "On target or target met" = "#41AB5D", "Moderate progress"  = "#A1DAB4",
+  "Marginal progress"        = "#41B6C4", "Stagnation"         = "#225EA8",
+  "Regression"              = "#08306B", "Insufficient data"  = "#969696"
+)
+
+p_supp3 <- ggplot(challenge_summary_2050,
+                  aes(y = reorder(short_label, desc(order_within_theme)),
+                      x = n_countries, fill = challenge_category)) +
+  geom_bar(stat = "identity", position = position_stack(reverse = TRUE), width = 0.7) +
+  scale_fill_manual(values = custom_palette_2050) +
+  facet_grid(theme ~ ., scales = "free_y", space = "free_y", switch = "y") +
+  theme_minimal() +
+  theme(
+    axis.text.y        = element_text(size = 8, face = "bold"),
+    axis.text.x        = element_text(size = 9),
+    panel.grid.major.y = element_blank(), panel.grid.minor = element_blank(),
+    strip.placement    = "outside",
+    strip.text.y.left  = element_text(angle = 0, hjust = 1, face = "bold", size = 8),
+    legend.position    = "right", legend.title = element_blank(),
+    plot.title         = element_text(face = "bold", size = 10),
+    plot.subtitle      = element_text(size = 8)
+  ) +
+  labs(
+    title    = str_wrap("Supplementary Figure 3. Number of Countries by Progress Toward 2050 Target, by Challenge Category and Theme", 80),
+    subtitle = str_wrap("Categories based on progress ratio: ≥0.95 = On target, 0.50–0.95 = Moderate, 0.10–0.50 = Marginal, 0–0.10 = Stagnation, <0 = Regression.", 120),
+    y = NULL, x = "Number of Countries"
+  )
+
+print(p_supp3)
+ggsave(file.path(figtab_out, "Supplementary_Figure_3.png"), p_supp3,
+       width = STD_WIDTH, height = STD_HEIGHT, dpi = STD_DPI, bg = "white")
+ggsave(file.path(figtab_out, "Supplementary_Figure_3.pdf"), p_supp3,
+       width = STD_WIDTH, height = STD_HEIGHT, bg = "white")
+cat("✓ Supplementary Figure 3 saved\n")
+```
+
+## Supplementary Figure 4 - Trends over time
+```{r, warning = FALSE, messages = FALSE, cache = TRUE}
+# Regress each variable on time to get average linear trend
+
+# Indicators that must be excluded from time trend regression:
+    oneyear <- c("Fisheries health index")
+    surveyindicators <- c("All 5 food groups", "Child labor", 
+                          "Female landholdings", 
+                          "Minimum dietary diversity, child",                   
+                          "Minimum dietary diversity, women", "NCD-Protect",
+                          "NCD-Risk", "Reduced coping strategies",
+                          "Social protection adequacy", 
+                          "Social protection coverage", 
+                          "Soft drink consumption", 
+                          "Zero fruits or vegetables, adult", 
+                          "Zero fruits or vegetables, child",
+                          "Protective foods",
+                          "Unhealthy foods")
+  
+  # Set up data
+    data <- FSCI_2025 %>%
+      # Remove categorical indicators
+      filter(!(unit == "categorical")) %>%
+      # Remove indicators with only one year of data
+      filter(!(short_label %in% oneyear)) %>%
+      # Remove survey data
+      filter(!(short_label %in% surveyindicators)) %>%
+      select(country, short_label, year, value, indicator_order, 
+             desirable_direction, theme, weight, 
+             FSCI_region, income_group) %>%
+      filter(!(is.na(value))) %>%
+      mutate(value = as.numeric(value),
+             country = as.character(country)) %>%
+      ungroup() %>%
+      filter(!(is.na(value)))
+    
+  # Now normalize the data
+    data <- data %>%
+      group_by(short_label) %>%
+      mutate(normvalue = (value - min(value)) / (max(value) - min(value)),
+             normvalue = normvalue * 100) %>%
+      ungroup() 
+    
+    data$short_label <- factor(data$short_label)
+    data$country <- factor(data$country)
+    data <- droplevels(data)
+    
+    # Initialize an empty list to store results
+      results_list <- list()
+
+    # Iterate over unique levels of short_label
+      for (i in unique(data$short_label)) {
+        dat <- filter(data, short_label == i)
+        
+        # Check if there are enough data points for the model
+          print(i)
+
+          model <- lm(normvalue ~ year + FSCI_region, data = dat, weights = weight)
+          result <- broom::tidy(model)
+          result <- result
+
+          # Add 95% confidence interval to the result
+          conf_int <- broom::confint_tidy(model)
+
+          result <- cbind(result, conf_int)
+          
+          # Add short_label to the result
+          result$short_label <- i
+          
+          # Add result to list
+          results_list[[i]] <- result 
+          }
+    
+    # Combine results into a single data frame
+    all_results <- do.call(rbind, results_list)
+    
+# Export table of full results
+    
+    regress_tbl <- all_results %>%
+      filter(term != "(Intercept)") %>%
+      filter(!str_detect(term, "^FSCI_region")) %>%
+      select(-c(statistic, term)) %>%
+      mutate(across(1:5, round, 5)) %>%
+      relocate(short_label, .before = estimate)
+    
+    # Add indicator order to sort
+    data2 <- data[, c("short_label", "indicator_order", "desirable_direction")]
+    data2 <- data2 %>% unique()
+    regress_tbl <- left_join(regress_tbl, data2, by = ("Indicator" = "short_label"))
+    regress_tbl <- regress_tbl %>% arrange(indicator_order) %>%
+      select(-c(indicator_order))
+    
+    # Name the columns nicely
+    col_names <- c( "Indicator", "Coef.", "SE", "p val.", "95% Conf. Int.", "merge", "Desirable direction")
+    colnames(regress_tbl) <- col_names
+    
+# Remove the intercepts
+    all_results2 <- all_results %>%
+      filter(!str_detect(term, "^FSCI_region")) %>%
+      filter(term != "(Intercept)") %>%
+      rename(pval = "p.value")
+    
+# Add stars for p-value
+    all_results2 <- all_results2 %>%
+      mutate(star = case_when(pval < 0.001 ~ "***",
+                              pval >= 0.001 & pval < 0.01 ~ "**",
+                              pval >= 0.01 & pval < 0.05 ~ "*",
+                              pval >= 0.05 ~ "")) %>%
+      select(short_label, estimate, conf.low, conf.high, star, pval) %>%
+      mutate(across(2:4, round, 3)) # This rounding step is consequential for the results - important to make a choice about how many digits to keep to "round to zero"
+    
+    # Merge in the theme and variable order 
+    data2 <- data[, c("short_label", "indicator_order", "theme", "desirable_direction")]
+    data2 <- data2 %>% unique()
+    all_results2$short_label <- factor(all_results2$short_label)
+    all_results2 <- left_join(all_results2, data2, by = c("short_label"))
+    # Add a variable to indicate whether the change is flat, in the right direction, or in the wrong direction
+    all_results2 <- all_results2 %>%
+      mutate(Progress = case_when(pval >= 0.05 ~ "No change",
+                                  desirable_direction == 1 & pval < 0.05 & estimate > 0 ~ "Desirable change",
+                                  desirable_direction == -1 & pval < 0.05 & estimate < 0 ~ "Desirable change",
+                                  desirable_direction == 1 & pval < 0.05 & estimate < 0 ~ "Undesirable change",
+                                  desirable_direction == -1 & pval < 0.05 & estimate > 0 ~ "Undesirable change",
+                                  desirable_direction == 1 & pval <0.05 & estimate == 0 ~ "No change",
+                                  desirable_direction == -1 & pval <0.05 & estimate == 0 ~ "No change",
+                                  TRUE ~ "No change"),
+             Progress = as.factor(Progress))
+
+
+# Plot the estimates
+  p1 <- all_results2 %>%
+       filter(estimate < 11) %>%
+      ggplot(., aes(y = fct_reorder(short_label, desc(estimate)), x = estimate)) + 
+      geom_point(aes(color = Progress)) +
+      geom_errorbarh(aes(xmin = conf.low, xmax = conf.high, color = Progress), width = 0.1) +
+      geom_text(aes(label = star, x = conf.high, color = Progress), hjust = -.1) +
+      scale_color_manual(values = c("forestgreen","gray85",  "darkred")) +
+      scale_y_discrete(limits=rev) +
+      geom_vline(xintercept = 0) +
+      theme_classic() +
+      labs(y = "",
+           x = "Average percent change per year (95% Confidence Interval)",
+           caption = "*** p< 0.001, ** p< 0.01, * p < 0.05") +
+      theme(plot.caption = element_text(hjust = -0.88),
+            plot.margin = unit(c(0,0,0,0), "cm"),
+            legend.position = "none")
+
+  # Now create the legend to show progress
+    forlegend <- all_results2 %>%
+      ggplot(., aes(y = fct_reorder(short_label, desc(estimate)), x = 1)) +
+      geom_point(aes(color = Progress), size = 4) +
+      scale_color_manual(values = c( "forestgreen","gray85", "darkred"),
+                         guide = guide_legend()) +
+      scale_y_discrete(limits=rev) +
+      scale_x_discrete(c(1,1)) +
+      theme_classic() +
+      theme(legend.text = element_text(size=12),
+            legend.title.align = 0,
+            legend.position = "right", 
+            legend.justification = "left",
+            legend.direction = "horizontal",
+            legend.title = element_text(size=12),
+            plot.margin = unit(c(0,0,0,0), "cm"),
+            legend.margin=unit(c(0,0,0,0), "cm"))
+    legend <- get_legend(forlegend)
+
+# Save the plot as .png
+     png(file.path(figtab_out, "SI Figure X_Trends.png"), width = 7.5, height = 10, unit = "in", res = 300)
+     cowplot::plot_grid(p1, legend, nrow = 2, rel_heights = c(22,1), align = "v")
+     dev.off()
+#     
+# # And as PDF for journal
+    pdf(file.path(figtab_out, "SI Figure X_Trends.pdf"), width = 7.5, height = 10)
+    cowplot::plot_grid(p1, legend, nrow = 2, rel_heights = c(22,1), align = "v")
+    dev.off()
+
+# Clean up
+  rm(legend, p1, all_results2, data2, col_names, regress_tbl, all_results, data, surveyindicators, oneyear, Indicator, i, model, conf_int)  
+  
+```
+
+---
+
+# Supplementary Figures 5–49 (Individual Indicator Trajectories)
+
+```{r trajectory-function}
+# Full trajectory generation function
+generate_table_consistent_trajectories <- function(analysis_data, ema_data, final_table,
+                                                    ema_cagr_summaries,
+                                                    indicator_name = "Fruit availability",
+                                                    output_dir = figtab_out,
+                                                    figure_number = 5) {
+  cat("Generating trajectories for:", indicator_name, "\n")
+  if (indicator_name == "Share of agriculture in GDP") { cat("Skipping\n"); return(NULL) }
+
+  region_col     <- "UN Continental Region"
+  indicator_data <- analysis_data %>% filter(short_label == indicator_name)
+  target_info    <- final_table    %>% filter(short_label == indicator_name)
+  if (nrow(indicator_data) == 0 || nrow(target_info) == 0) {
+    warning("Insufficient data for: ", indicator_name); return(NULL)
+  }
+
+  theme_name          <- unique(indicator_data$theme)[1]
+  unit_name           <- unique(indicator_data$unit)[1]
+  desirable_direction <- if ("desirable_direction" %in% names(indicator_data)) {
+    dd <- unique(indicator_data$desirable_direction); if (length(dd) && !is.na(dd[1])) dd[1] else 1
+  } else 1
+  is_higher_better <- desirable_direction > 0
+  if (indicator_name %in% c("Cropland change", "cropland change", "Deforestation rate"))
+    is_higher_better <- FALSE
+
+  region_colors <- c(Africa = "#E41A1C", Americas = "#377EB8", Asia = "#4DAF4A",
+                     Europe = "#984EA3", Oceania  = "#FF7F00")
+
+  has_target    <- !is.na(target_info$target)
+  has_benchmark <- !is.na(target_info$benchmark_Global)
+  target_value  <- if (has_target)    target_info$target          else NA
+  benchmark_value <- if (has_benchmark) target_info$benchmark_Global else NA
+  if (indicator_name %in% c("Fruit availability", "Vegetable availability") &&
+      !is.na(target_value) && target_value > 400) target_value <- 400
+
+  table_baselines <- ema_data %>%
+    filter(short_label == indicator_name) %>%
+    select(country, baseline_value, baseline_year, `UN Continental Region`) %>%
+    rename(region_name = `UN Continental Region`)
+  if (nrow(table_baselines) == 0) { warning("No baseline data for: ", indicator_name); return(NULL) }
+
+  regional_table_baselines <- table_baselines %>%
+    group_by(region_name) %>%
+    summarise(regional_baseline_value = mean(baseline_value, na.rm = TRUE),
+              regional_baseline_year  = round(mean(baseline_year, na.rm = TRUE)),
+              countries_in_region     = n(), .groups = "drop") %>%
+    mutate(
+      proper_target_cagr_2030 = case_when(
+        is.na(target_value) | regional_baseline_value <= 0 | target_value <= 0 ~ NA_real_,
+        is_higher_better & regional_baseline_value >= target_value ~ 0,
+        TRUE ~ ((target_value / regional_baseline_value)^(1 / (2030 - regional_baseline_year)) - 1) * 100),
+      proper_target_cagr_2050 = case_when(
+        is.na(target_value) | regional_baseline_value <= 0 | target_value <= 0 ~ NA_real_,
+        is_higher_better & regional_baseline_value >= target_value ~ 0,
+        TRUE ~ ((target_value / regional_baseline_value)^(1 / (2050 - regional_baseline_year)) - 1) * 100),
+      proper_benchmark_cagr_2030 = case_when(
+        is.na(benchmark_value) | regional_baseline_value <= 0 | benchmark_value <= 0 ~ NA_real_,
+        is_higher_better & regional_baseline_value >= benchmark_value ~ 0,
+        TRUE ~ ((benchmark_value / regional_baseline_value)^(1 / (2030 - regional_baseline_year)) - 1) * 100),
+      proper_benchmark_cagr_2050 = case_when(
+        is.na(benchmark_value) | regional_baseline_value <= 0 | benchmark_value <= 0 ~ NA_real_,
+        is_higher_better & regional_baseline_value >= benchmark_value ~ 0,
+        TRUE ~ ((benchmark_value / regional_baseline_value)^(1 / (2050 - regional_baseline_year)) - 1) * 100)
+    )
+
+  table_cagr_values <- ema_cagr_summaries %>%
+    filter(group_type == "Regional", short_label == indicator_name) %>%
+    select(region_name = group_name,
+           avg_cagr_2030 = mean_ema_cagr_to_target_2030,
+           avg_cagr_2050 = mean_ema_cagr_to_target_2050,
+           avg_benchmark_cagr_2030 = mean_ema_cagr_to_global_benchmark_2030,
+           avg_benchmark_cagr_2050 = mean_ema_cagr_to_global_benchmark_2050)
+
+  projection_setup <- regional_table_baselines %>%
+    left_join(table_cagr_values, by = "region_name")
+
+  can_plot_target    <- has_target    && sum(!is.na(projection_setup$proper_target_cagr_2030))    > 0
+  can_plot_benchmark <- has_benchmark && sum(!is.na(projection_setup$proper_benchmark_cagr_2030)) > 0
+  if (!can_plot_target && !can_plot_benchmark) { warning("No valid projections for: ", indicator_name); return(NULL) }
+
+  # Indicators that suppress historical lines
+  suppress_historical <- c("All 5 food groups", "Minimum dietary diversity, child",
+                           "Minimum dietary diversity, women", "NCD-Protect", "NCD-Risk",
+                           "Protective food consumption", "Unhealthy food consumption",
+                           "Soft drink consumption", "Zero fruits or vegetables, adult",
+                           "Zero fruits or vegetables, child", "Fisheries health index",
+                           "Child labor", "Female landholdings", "Social protection adequacy",
+                           "Social protection coverage", "Reduced coping strategies")
+
+  # Historical lines (regional averages up to baseline)
+  historical_data <- indicator_data %>%
+    select(country, year, value, !!sym(region_col)) %>%
+    filter(!is.na(value)) %>%
+    rename(region_name = !!sym(region_col)) %>%
+    group_by(region_name, year) %>%
+    summarise(avg_value = mean(value, na.rm = TRUE), .groups = "drop") %>%
+    left_join(select(regional_table_baselines, region_name, regional_baseline_year),
+              by = "region_name") %>%
+    filter(year <= regional_baseline_year) %>%
+    select(-regional_baseline_year) %>%
+    mutate(type = "Historical")
+
+  baseline_pts <- regional_table_baselines %>%
+    select(region_name, regional_baseline_value, regional_baseline_year) %>%
+    rename(avg_value = regional_baseline_value, year = regional_baseline_year) %>%
+    mutate(type = "Baseline_Connection")
+
+  # Build projection trajectories
+  projection_data <- pmap_dfr(
+    list(projection_setup$region_name,
+         projection_setup$regional_baseline_value,
+         projection_setup$regional_baseline_year,
+         projection_setup$proper_target_cagr_2030,
+         projection_setup$proper_target_cagr_2050,
+         projection_setup$proper_benchmark_cagr_2030,
+         projection_setup$proper_benchmark_cagr_2050),
+    function(rn, bv, by, tc30, tc50, bc30, bc50) {
+      rows <- list()
+      make_proj <- function(cagr, end_year, type_label) {
+        if (is.na(cagr)) return(NULL)
+        yrs <- seq(by, end_year)
+        data.frame(region_name = rn, year = yrs,
+                   avg_value = bv * (1 + cagr / 100)^(yrs - by), type = type_label)
+      }
+      if (can_plot_target) {
+        rows <- c(rows, list(make_proj(tc30, 2030, "EMA-TARGET-2030"),
+                             make_proj(tc50, 2050, "EMA-TARGET-2050")))
+      }
+      if (can_plot_benchmark) {
+        rows <- c(rows, list(make_proj(bc30, 2030, "EMA-BENCHMARK-2030"),
+                             make_proj(bc50, 2050, "EMA-BENCHMARK-2050")))
+      }
+      bind_rows(rows)
+    }
+  )
+  if (nrow(projection_data) == 0) { warning("No projections for: ", indicator_name); return(NULL) }
+
+  all_traj <- bind_rows(historical_data, baseline_pts, projection_data)
+  hist_lines <- if (indicator_name %in% suppress_historical) baseline_pts
+                else filter(all_traj, type %in% c("Historical", "Baseline_Connection"))
+
+  y_all   <- c(all_traj$avg_value,
+               if (!is.na(target_value))    target_value    else NULL,
+               if (!is.na(benchmark_value)) benchmark_value else NULL)
+  y_range <- diff(range(y_all, na.rm = TRUE))
+  y_min   <- max(0, min(y_all, na.rm = TRUE) - 0.05 * y_range)
+  y_max   <- max(y_all, na.rm = TRUE) + 0.05 * y_range
+  if (min(y_all, na.rm = TRUE) < 0) y_min <- min(y_all, na.rm = TRUE) - 0.05 * abs(min(y_all, na.rm = TRUE))
+
+  add_letter <- function(p, l) p + annotate("text", x = -Inf, y = Inf, label = l,
+                                             hjust = -0.5, vjust = 1.5, size = 8, fontface = "bold")
+
+  make_panel <- function(proj_type, end_year, ref_val, ref_label, letter) {
+    proj_lines <- filter(all_traj, type == proj_type)
+    if (nrow(proj_lines) == 0) return(NULL)
+    cagr_col <- if (grepl("TARGET", proj_type)) {
+      if (end_year == 2030) "avg_cagr_2030" else "avg_cagr_2050"
+    } else {
+      if (end_year == 2030) "avg_benchmark_cagr_2030" else "avg_benchmark_cagr_2050"
+    }
+    lbl_data <- baseline_pts %>%
+      left_join(table_cagr_values, by = "region_name") %>%
+      filter(!is.na(.data[[cagr_col]])) %>%
+      arrange(avg_value) %>%
+      mutate(pos_rank = row_number(),
+             offset   = (y_max - y_min) * 0.03 * ifelse(pos_rank %% 2 == 1, 1, -1),
+             label_v  = avg_value + offset,
+             label_t  = paste0(round(.data[[cagr_col]], 1), "%"))
+
+    p <- ggplot() +
+      geom_line(data = hist_lines, aes(x = year, y = avg_value, color = region_name), linewidth = 1) +
+      geom_line(data = proj_lines, aes(x = year, y = avg_value, color = region_name),
+                linewidth = 1, linetype = "dashed") +
+      geom_hline(yintercept = ref_val, color = "black", linetype = "dashed", linewidth = 0.7) +
+      geom_label(data = lbl_data,
+                 aes(x = year, y = label_v, color = region_name, label = label_t),
+                 fill = "white", alpha = 0.9, label.size = 0.2, size = 2.5,
+                 hjust = 0.5, label.padding = unit(0.15, "lines"), label.r = unit(0.1, "lines")) +
+      scale_color_manual(values = region_colors, name = "Region") +
+      scale_x_continuous(breaks = seq(floor(min(all_traj$year) / 5) * 5, end_year, by = ifelse(end_year == 2030, 5, 10))) +
+      scale_y_continuous(limits = c(y_min, y_max)) +
+      coord_cartesian(xlim = c(NA, end_year + 1)) +
+      labs(title    = paste0(ref_label, " ", end_year),
+           subtitle = paste0(sub(".*-", "", ref_label), ": ", round(ref_val, 1), " ", unit_name),
+           x = "Year", y = paste0("Value (", unit_name, ")")) +
+      theme_minimal() +
+      theme(legend.position = "right", plot.title = element_text(face = "bold"),
+            plot.subtitle = element_text(size = 9), panel.grid.minor = element_blank(),
+            panel.border = element_rect(fill = NA, color = "gray80"))
+    add_letter(p, letter)
+  }
+
+  plots <- list()
+  if (can_plot_target) {
+    plots[["A"]] <- make_panel("EMA-TARGET-2030",    2030, target_value,    "Global Target",    "A")
+    plots[["B"]] <- make_panel("EMA-TARGET-2050",    2050, target_value,    "Global Target",    "B")
+  }
+  if (can_plot_benchmark) {
+    lA <- if (can_plot_target) "C" else "A"
+    lB <- if (can_plot_target) "D" else "B"
+    plots[[lA]] <- make_panel("EMA-BENCHMARK-2030", 2030, benchmark_value, "Global Benchmark", lA)
+    plots[[lB]] <- make_panel("EMA-BENCHMARK-2050", 2050, benchmark_value, "Global Benchmark", lB)
+  }
+  plots <- Filter(Negate(is.null), plots)
+  if (length(plots) < 2) { warning("Not enough panels for: ", indicator_name); return(NULL) }
+
+  grid_layout <- if (length(plots) == 4) {
+    (plots[["A"]] + plots[["B"]]) / (plots[["C"]] + plots[["D"]])
+  } else {
+    plots[[1]] / plots[[2]]
+  }
+
+  fig_title <- if (can_plot_target && can_plot_benchmark)
+    paste0("Supplementary Figure ", figure_number, ". Regional Trajectories to Global Target and Benchmark to 2030 and 2050, ", indicator_name)
+  else if (can_plot_target)
+    paste0("Supplementary Figure ", figure_number, ". Regional Trajectories to Global Target to 2030 and 2050, ", indicator_name)
+  else
+    paste0("Supplementary Figure ", figure_number, ". Regional Trajectories to Global Benchmark to 2030 and 2050, ", indicator_name)
+
+  combined_plot <- grid_layout +
+    patchwork::plot_layout(guides = "collect") +
+    patchwork::plot_annotation(
+      title    = fig_title,
+      subtitle = paste0("Unit: ", unit_name, " | Theme: ", theme_name,
+                        " | ", ifelse(is_higher_better, "higher is better", "lower is better")),
+      theme    = theme(plot.title    = element_text(face = "bold", hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5))
+    )
+
+  fname_base <- paste0("Supplementary_Figure_", figure_number, "_",
+                       gsub("[^a-zA-Z0-9]", "_", indicator_name), "_regional_trajectories")
+  ggsave(file.path(output_dir, paste0(fname_base, ".png")), combined_plot,
+         width = 12, height = 12, dpi = 300, bg = "white")
+  ggsave(file.path(output_dir, paste0(fname_base, ".pdf")), combined_plot,
+         width = 12, height = 12, bg = "white")
+  cat("✓ Saved:", fname_base, "\n")
+  invisible(list(figure_number = figure_number, indicator_name = indicator_name))
+}
+```
+
+```{r run-trajectory-figures}
+all_indicators <- unique(
+  final_table$short_label[!is.na(final_table$target) | !is.na(final_table$benchmark_Global)]
+)
+cat("Found", length(all_indicators), "indicators with targets or benchmarks\n")
+
+current_fig_num <- 5L
+results         <- list()
+
+for (i in seq_along(all_indicators)) {
+  ind <- all_indicators[i]
+  cat("Processing", i, "of", length(all_indicators), ":", ind, "as Figure", current_fig_num, "\n")
+  result <- tryCatch(
+    generate_table_consistent_trajectories(
+      analysis_data      = analysis_data,
+      ema_data           = ema_accelerated_trajectories,
+      final_table        = final_table,
+      ema_cagr_summaries = ema_cagr_summaries,
+      indicator_name     = ind,
+      output_dir         = figtab_out,
+      figure_number      = current_fig_num
+    ),
+    error = function(e) { cat("Error:", ind, "-", e$message, "\n"); NULL }
+  )
+  if (!is.null(result)) { results[[ind]] <- result; current_fig_num <- current_fig_num + 1L }
+}
+
+cat("✓ Generated", length(results), "trajectory figures (Figs 5 –", current_fig_num - 1L, ")\n")
+```
+
+## Supplementary Figure 50 – Regional Benchmarks Heatmap
+
+```{r supp-fig50}
+regional_ema_cagr_summaries_regional <- ema_accelerated_trajectories %>%
+  group_by(`UN Continental Region`, short_label, theme, unit, desirable_direction) %>%
+  summarise(
+    mean_ema_cagr_to_regional_benchmark_2030 =
+      mean(ema_cagr_to_regional_benchmark_2030[ema_cagr_to_regional_benchmark_2030 != -100], na.rm = TRUE),
+    mean_ema_cagr_to_regional_benchmark_2050 =
+      mean(ema_cagr_to_regional_benchmark_2050[ema_cagr_to_regional_benchmark_2050 != -100], na.rm = TRUE),
+    countries_with_ema_regional_benchmark_cagr = sum(!is.na(ema_cagr_to_regional_benchmark_2030)),
+    .groups = "drop"
+  ) %>%
+  mutate(group_type = "Regional", group_name = `UN Continental Region`) %>%
+  select(-`UN Continental Region`)
+
+regional_comparison_50 <- regional_ema_cagr_summaries_regional %>%
+  filter(short_label != "Cropland change") %>%
+  select(short_label, theme, group_name,
+         mean_ema_cagr_to_regional_benchmark_2030,
+         mean_ema_cagr_to_regional_benchmark_2050) %>%
+  mutate(theme = ifelse(theme == "Environment, natural resources, and production",
+                        "Environment, Natural Resources, and Production", theme)) %>%
+  pivot_wider(names_from  = group_name,
+              values_from = c(mean_ema_cagr_to_regional_benchmark_2030,
+                              mean_ema_cagr_to_regional_benchmark_2050),
+              names_sep   = "_") %>%
+  arrange(theme, short_label)
+
+cagr_cols_50 <- grep("^mean_ema_cagr_to_regional_benchmark_", names(regional_comparison_50), value = TRUE)
+
+heat_colors_fn <- function(x) case_when(
+  is.na(x) ~ "#FFFFFF", x < -15 ~ "#d7191c", x < -10 ~ "#fdae61",
+  x < -5   ~ "#ffffbf", x <   0 ~ "#a6d96a", x ==  0 ~ "#1a9641",
+  x <   5  ~ "#a6d96a", x <  10 ~ "#ffffbf", x <  15 ~ "#fdae61",
+  TRUE ~ "#d7191c"
+)
+
+supp_fig50 <- regional_comparison_50 %>%
+  gt(groupname_col = "theme") %>%
+  opt_table_font(font = "sans-serif", size = px(24)) %>%
+  tab_header(
+    title    = md("**Supplementary Figure 50. Accelerated Trajectory to Reach Regional Benchmarks, by Region (% change per year)**"),
+    subtitle = md("EMA method (α = 0.5). Negative = need to decrease; positive = need to increase.")
+  ) %>%
+  fmt_number(columns = all_of(cagr_cols_50), decimals = 1) %>%
+  data_color(columns = all_of(cagr_cols_50), fn = heat_colors_fn, alpha = 0.8) %>%
+  fmt_missing(columns = everything(), missing_text = "-") %>%
+  tab_spanner(label = "2030", columns = contains("_2030_")) %>%
+  tab_spanner(label = "2050", columns = contains("_2050_")) %>%
+  cols_label(short_label = "Indicator") %>%
+  cols_width(short_label ~ px(250), everything() ~ px(85)) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_column_labels()) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_row_groups()) %>%
+  tab_footnote(
+    footnote = md("**Legend:** Dark Green (0%); Light Green (<±5%); Yellow (±5-10%); Orange (±10-15%); Red (>±15%)"),
+    locations = cells_title(groups = "title")
+  ) %>%
+  tab_options(
+    table.border.top.width = px(0), table.border.bottom.width = px(0),
+    heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+    column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+    row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+    table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+    row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+    heading.background.color = "white", heading.title.font.size = px(36),
+    heading.subtitle.font.size = px(28), column_labels.font.size = px(28),
+    table.font.size = px(24), data_row.padding = px(4), column_labels.padding = px(4),
+    table.margin.left = px(0), table.margin.right = px(0)
+  )
+
+save_table_as_html_png_pdf(supp_fig50, "Supplementary_Figure_50")
+cat("✓ Supplementary Figure 50 saved\n")
+```
+
+## Supplementary Figure 51 – Income Group Benchmarks Heatmap
+
+```{r supp-fig51}
+income_ema_cagr_summaries <- ema_accelerated_trajectories %>%
+  group_by(income_group, short_label, theme, unit, desirable_direction) %>%
+  summarise(
+    mean_ema_cagr_to_income_benchmark_2030 =
+      mean(ema_cagr_to_income_benchmark_2030[ema_cagr_to_income_benchmark_2030 != -100], na.rm = TRUE),
+    mean_ema_cagr_to_income_benchmark_2050 =
+      mean(ema_cagr_to_income_benchmark_2050[ema_cagr_to_income_benchmark_2050 != -100], na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  filter(!is.na(income_group)) %>%
+  mutate(income_group = factor(income_group, levels = c("Low income", "Lower middle income",
+                                                         "Upper middle income", "High income"))) %>%
+  arrange(income_group) %>%
+  mutate(group_type = "Income", group_name = as.character(income_group)) %>%
+  select(-income_group)
+
+income_comparison_51 <- income_ema_cagr_summaries %>%
+  filter(short_label != "Cropland change") %>%
+  select(short_label, theme, group_name,
+         mean_ema_cagr_to_income_benchmark_2030,
+         mean_ema_cagr_to_income_benchmark_2050) %>%
+  mutate(theme = ifelse(theme == "Environment, natural resources, and production",
+                        "Environment, Natural Resources, and Production", theme)) %>%
+  pivot_wider(names_from  = group_name,
+              values_from = c(mean_ema_cagr_to_income_benchmark_2030,
+                              mean_ema_cagr_to_income_benchmark_2050),
+              names_sep   = "_") %>%
+  arrange(theme, short_label)
+
+cagr_cols_51 <- grep("^mean_ema_cagr_to_income_benchmark_", names(income_comparison_51), value = TRUE)
+
+supp_fig51 <- income_comparison_51 %>%
+  gt(groupname_col = "theme") %>%
+  opt_table_font(font = "sans-serif", size = px(24)) %>%
+  tab_header(
+    title    = md("**Supplementary Figure 51. Accelerated Trajectory to Reach Income Group Benchmarks, by Income Group (% change per year)**"),
+    subtitle = md("EMA method (α = 0.5). Negative = need to decrease; positive = need to increase.")
+  ) %>%
+  fmt_number(columns = all_of(cagr_cols_51), decimals = 1) %>%
+  data_color(columns = all_of(cagr_cols_51), fn = heat_colors_fn, alpha = 0.8) %>%
+  fmt_missing(columns = everything(), missing_text = "-") %>%
+  tab_spanner(label = "2030", columns = contains("_2030_")) %>%
+  tab_spanner(label = "2050", columns = contains("_2050_")) %>%
+  cols_label(short_label = "Indicator") %>%
+  cols_width(short_label ~ px(250), everything() ~ px(85)) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_column_labels()) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_row_groups()) %>%
+  tab_footnote(
+    footnote = md("**Legend:** Dark Green (0%); Light Green (<±5%); Yellow (±5-10%); Orange (±10-15%); Red (>±15%)"),
+    locations = cells_title(groups = "title")
+  ) %>%
+  tab_options(
+    table.border.top.width = px(0), table.border.bottom.width = px(0),
+    heading.border.bottom.width = px(0), column_labels.border.top.width = px(0),
+    column_labels.border.bottom.width = px(1), row_group.border.top.width = px(0),
+    row_group.border.bottom.width = px(0), table_body.border.bottom.width = px(0),
+    table_body.hlines.width = px(1), table_body.vlines.width = px(0),
+    row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+    heading.background.color = "white", heading.title.font.size = px(36),
+    heading.subtitle.font.size = px(28), column_labels.font.size = px(28),
+    table.font.size = px(24), data_row.padding = px(4), column_labels.padding = px(4),
+    table.margin.left = px(0), table.margin.right = px(0)
+  )
+
+save_table_as_html_png_pdf(supp_fig51, "Supplementary_Figure_51")
+cat("✓ Supplementary Figure 51 saved\n")
+```
+
+# Part 5 - Additional Tables/Figures
+
+## Combined Figure 2–3 (Policy Report Version)
+
+```{r combined-fig2-3}
+indicators_with_targets  <- final_table %>% filter(!is.na(target))          %>% pull(short_label)
+indicators_bench_only    <- final_table %>%
+  filter(is.na(target), !is.na(benchmark_Global),
+         !short_label %in% c("Share of agriculture in GDP", "Cropland change")) %>%
+  pull(short_label)
+
+combined_target_data <- ema_cagr_summaries %>%
+  filter(group_type == "Regional", short_label %in% indicators_with_targets,
+         !short_label %in% exclude_indicators_main) %>%
+  select(short_label, theme, group_name,
+         cagr_2030 = mean_ema_cagr_to_target_2030,
+         cagr_2050 = mean_ema_cagr_to_target_2050) %>%
+  mutate(indicator_type = "target")
+
+combined_bench_data <- ema_cagr_summaries %>%
+  filter(group_type == "Regional", short_label %in% indicators_bench_only,
+         !short_label %in% exclude_indicators_main) %>%
+  select(short_label, theme, group_name,
+         cagr_2030 = mean_ema_cagr_to_global_benchmark_2030,
+         cagr_2050 = mean_ema_cagr_to_global_benchmark_2050) %>%
+  mutate(indicator_type = "benchmark")
+
+combined_data <- bind_rows(combined_target_data, combined_bench_data) %>%
+  mutate(
+    theme      = ifelse(theme == "Environment, natural resources, and production",
+                        "Environment, Natural Resources, and Production", theme),
+    short_label = ifelse(indicator_type == "benchmark",
+                         paste0(short_label, "*"), short_label)
+  ) %>%
+  pivot_wider(names_from  = group_name,
+              values_from = c(cagr_2030, cagr_2050),
+              names_sep   = "_") %>%
+  arrange(theme, short_label)
+
+cagr_cols_comb <- grep("^cagr_", names(combined_data), value = TRUE)
+
+combined_fig <- combined_data %>%
+  select(-indicator_type) %>%
+  gt(groupname_col = "theme") %>%
+  opt_table_font(font = "sans-serif", size = px(32)) %>%
+  tab_header(
+    title    = md("**Figure 2. Accelerated Trajectory to Reach Global Targets and Benchmarks, by Region (% change per year)**"),
+    subtitle = md("EMA method (α = 0.5). *Indicators with asterisk have benchmarks only (no global target). Negative = need to decrease; positive = need to increase.")
+  ) %>%
+  fmt_number(columns = all_of(cagr_cols_comb), decimals = 1) %>%
+  data_color(columns = all_of(cagr_cols_comb), fn = heat_colors_fn, alpha = 0.8) %>%
+  fmt_missing(columns = everything(), missing_text = "-") %>%
+  tab_spanner(label = "2030", columns = contains("_2030_")) %>%
+  tab_spanner(label = "2050", columns = contains("_2050_")) %>%
+  cols_label(short_label = "Indicator") %>%
+  cols_width(short_label ~ px(250), everything() ~ px(85)) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_column_labels()) %>%
+  tab_style(style = list(cell_fill(color = "#f8f9fa"), cell_text(weight = "bold")),
+            locations = cells_row_groups()) %>%
+  tab_footnote(
+    footnote = md("**Legend:** Dark Green (0%); Light Green (<±5%); Yellow (±5-10%); Orange (±10-15%); Red (>±15%)"),
+    locations = cells_title(groups = "title")
+  ) %>%
+  tab_options(
+    table.border.top.width    = px(3), table.border.top.color    = "#666666",
+    heading.border.bottom.width = px(2), heading.border.bottom.color = "#666666",
+    column_labels.border.bottom.width = px(2), column_labels.border.bottom.color = "#666666",
+    table_body.border.bottom.width = px(2), table_body.border.bottom.color = "#666666",
+    table.border.bottom.width = px(0), row_group.border.top.width = px(0),
+    row_group.border.bottom.width = px(0),
+    row_group.background.color = "#f8f9fa", column_labels.background.color = "#f8f9fa",
+    heading.background.color = "white", table.width = pct(100),
+    heading.title.font.size = px(36), heading.subtitle.font.size = px(26),
+    column_labels.font.size = px(26), table.font.size = px(24),
+    data_row.padding = px(1), column_labels.padding = px(1),
+    data_row.padding.horizontal = px(2), column_labels.padding.horizontal = px(2),
+    table.margin.left = px(0), table.margin.right = px(0)
+  )
+
+gtsave(combined_fig, file.path(figtab_out, "Figure_2_3_Combined.png"),
+       vwidth = 2400, vheight = 1800, zoom = 3)
+Sys.sleep(2)
+img_comb <- image_read(file.path(figtab_out, "Figure_2_3_Combined.png"))
+image_write(img_comb, path = file.path(figtab_out, "Figure_2_3_Combined.pdf"),
+            format = "pdf", density = "300x300")
+cat("✓ Combined Figure 2-3 saved\n")
+```
+
+#### SI Table X. Regression results of time trends
+```{r, warning = FALSE, messages = FALSE, cache = TRUE}
+# Regress each variable on time to get average linear trend
+
+# Indicators that must be excluded from time trend regression:
+    oneyear <- c("Fisheries health index")
+    surveyindicators <- c("All 5 food groups", "Child labor", 
+                          "Female landholdings", 
+                          "Minimum dietary diversity, child",                   
+                          "Minimum dietary diversity, women", "NCD-Protect",
+                          "NCD-Risk", "Reduced coping strategies",
+                          "Social protection adequacy", 
+                          "Social protection coverage", 
+                          "Soft drink consumption", 
+                          "Zero fruits or vegetables, adult", 
+                          "Zero fruits or vegetables, child",
+                          "Protective foods",
+                          "Unhealthy foods")
+  
+  # Set up data
+    data <- FSCI_2025 %>%
+      # Remove categorical indicators
+      filter(!(unit == "categorical")) %>%
+      # Remove indicators with only one year of data
+      filter(!(short_label %in% oneyear)) %>%
+      # Remove survey data
+      filter(!(short_label %in% surveyindicators)) %>%
+      select(country, short_label, year, value, indicator_order, 
+             desirable_direction, theme, weight, 
+             FSCI_region, income_group) %>%
+      filter(!(is.na(value))) %>%
+      mutate(value = as.numeric(value),
+             country = as.character(country)) %>%
+      ungroup() %>%
+      filter(!(is.na(value)))
+    
+  # Now normalize the data
+    data <- data %>%
+      group_by(short_label) %>%
+      mutate(normvalue = (value - min(value)) / (max(value) - min(value)),
+             normvalue = normvalue * 100) %>%
+      ungroup() 
+    
+    data$short_label <- factor(data$short_label)
+    data$country <- factor(data$country)
+    data <- droplevels(data)
+    
+    # Initialize an empty list to store results
+      results_list <- list()
+
+    # Iterate over unique levels of short_label
+      for (i in unique(data$short_label)) {
+        dat <- filter(data, short_label == i)
+        
+        # Check if there are enough data points for the model
+          print(i)
+
+          model <- lm(normvalue ~ year + FSCI_region, data = dat, weights = weight)
+          result <- broom::tidy(model)
+          result <- result
+
+          # Add 95% confidence interval to the result
+          conf_int <- broom::confint_tidy(model)
+
+          result <- cbind(result, conf_int)
+          
+          # Add short_label to the result
+          result$short_label <- i
+          
+          # Add result to list
+          results_list[[i]] <- result 
+          }
+    
+    # Combine results into a single data frame
+    all_results <- do.call(rbind, results_list)
+    
+    regress_tbl <- all_results %>%
+      filter(term != "(Intercept)") %>%
+      filter(!str_detect(term, "^FSCI_region")) %>%
+      select(-c(statistic, term)) %>%
+      mutate(across(1:5, round, 5)) %>%
+      relocate(short_label, .before = estimate)
+    
+    # Add indicator order to sort
+    data2 <- data[, c("short_label", "indicator_order", "desirable_direction")]
+    data2 <- data2 %>% unique()
+    regress_tbl <- left_join(regress_tbl, data2, by = ("Indicator" = "short_label"))
+    regress_tbl <- regress_tbl %>% arrange(indicator_order) %>%
+      select(-c(indicator_order))
+    
+    # Add stars for p-value
+    regress_tbl <- regress_tbl %>%
+      mutate(star = case_when(p.value < 0.001 ~ "***",
+                              p.value >= 0.001 & p.value < 0.01 ~ "**",
+                              p.value >= 0.01 & p.value < 0.05 ~ "*",
+                              p.value >= 0.05 ~ "")) %>%
+      mutate(across(2:6, round, 3)) %>% # This rounding step is consequential for the results - important to make a choice about how many digits to keep to "round to zero"
+      relocate(star, .after = p.value)
+    
+  
+    # Add progress column
+    regress_tbl <- regress_tbl %>%
+      mutate(Progress = case_when(p.value >= 0.05 ~ "No change",
+                                  desirable_direction == 1 & p.value < 0.05 & estimate > 0 ~ "Desirable change",
+                                  desirable_direction == -1 & p.value < 0.05 & estimate < 0 ~ "Desirable change",
+                                  desirable_direction == 1 & p.value < 0.05 & estimate < 0 ~ "Undesirable change",
+                                  desirable_direction == -1 & p.value < 0.05 & estimate > 0 ~ "Undesirable change",
+                                  desirable_direction == 1 & p.value <0.05 & estimate == 0 ~ "No change",
+                                  desirable_direction == -1 & p.value <0.05 & estimate == 0 ~ "No change",
+                                  TRUE ~ "No change"),
+             Progress = as.factor(Progress))
+    
+  # Get the sample size (countries by years) per indicator
+    samplesize <- data %>%
+      group_by(short_label) %>%
+      summarize("N countries" = n_distinct(country),
+                "Years" = min(year),
+                "Years2" = max(year),
+                "N years" = n_distinct(year)) %>%
+      ungroup()
+    regress_tbl <- left_join(regress_tbl, samplesize, by = c("short_label"))
+    
+    # Name the columns nicely
+    col_names <- c( "Indicator", "Coef.", "SE", "p val.", "merge1", "95% Conf. Int.", "merge2", "Desirable direction", "Trend", "N Countries", "Years", "merge3", "N years")
+    colnames(regress_tbl) <- col_names
+    regress_tbl$Years <- as.character(regress_tbl$Years)
+    regress_tbl$merge3 <- as.character(regress_tbl$merge3)
+    
+
+# Export table of full results
+    
+    SItable1 <- flextable::flextable(regress_tbl) %>% autofit() %>%
+      set_table_properties(layout = "autofit")
+        
+    # Save table
+      save_as_docx(SItable1, path = file.path(figtab_out, "SI Table X_Linear time trend regression.docx"), orient = "landscape")
+      
+# Clean up
+    rm(surveyindicators, oneyear, SItable1, regress_tbl, data2, all_results, results_list, data)
+
+```
+
+$~$
+
+#### SI Table X - Imputed food price index observations dropped 
+```{r, warning = FALSE, messages = FALSE, echo = TRUE}
+  # Load the raw food price data
+      temp_env <- new.env()
+      load(file.path(data_in, "APIpulls_21Feb2025.RData"), envir = temp_env)
+      result_fpi <- temp_env$result_fpi
+      rm(temp_env)
+      fpi_imputed <- as.data.frame(result_fpi) 
+      
+    # Check the imputed records
+      fpi_imputed <- fpi_imputed %>%
+        filter(Flag.Description == "Imputed value") %>%
+        mutate(across(everything(), ~ as.numeric(.))) %>%
+        mutate(Year = as.Date(Year, format = "%Y"))
+
+          # Add ISO codes and get correct UN country name
+            fpi_imputed$ISO3 <- countrycode::countrycode(fpi_imputed$Area.Code..M49., origin = 'un', destination = 'iso3c', warn = TRUE, nomatch = NA)
+            fpi_imputed$Country <- countrycode::countrycode(fpi_imputed$ISO3, origin = 'iso3c', destination = 'un.name.en', warn = TRUE, nomatch = NA)  
+
+      # Summary 
+      summary(fpi_imputed$Year)
+      unique(fpi_imputed$Country)
+      fpi_imputed_sum <- fpi_imputed %>% group_by(Country, Year) %>%
+        summarise(N_imputed = n(), .groups = "drop") %>%
+        pivot_wider(names_from = Year, values_from = N_imputed) 
+      
+# Create table
+  SItable_X <- flextable::flextable(fpi_imputed_sum)
+  flextable::flextable(table) %>%
+    save_as_docx(path = file.path(figtab_out, "SI Table 2.docx"))
+  
+# Clean up
+  rm(result_fpi, fpi_imputed, fpi_imputed_sum, SItable_X)
+      
+```
+
+$~$
+
+
+#### SI FIgures X-X Time trends by region
+```{r, warning = FALSE, messages = FALSE, cache = TRUE}
+# Indicators that must be excluded from time trend regression:
+    oneyear <- c("Fisheries health index")
+    surveyindicators <- c("All 5 food groups", "Child labor", 
+                          "Female landholdings", 
+                          "Minimum dietary diversity, child",                   
+                          "Minimum dietary diversity, women", "NCD-Protect",
+                          "NCD-Risk", "Reduced coping strategies",
+                          "Social protection adequacy", 
+                          "Social protection coverage", 
+                          "Soft drink consumption", 
+                          "Zero fruits or vegetables, adult", 
+                          "Zero fruits or vegetables, child",
+                          "Protective foods",
+                          "Unhealthy foods")
+  
+  # Set up data
+    data <- FSCI_2025 %>%
+      # Remove categorical indicators
+      filter(!(unit == "categorical")) %>%
+      # Remove indicators with only one year of data
+      filter(!(short_label %in% oneyear)) %>%
+      # Remove survey data
+      filter(!(short_label %in% surveyindicators)) %>%
+      select(country, short_label, year, value, indicator_order, 
+             desirable_direction, theme, weight, 
+             FSCI_region, income_group) %>%
+      filter(!(is.na(value))) %>%
+      mutate(value = as.numeric(value),
+             country = as.character(country)) %>%
+      ungroup() %>%
+      filter(!(is.na(value)))
+    
+  # Now normalize the data
+    data <- data %>%
+      group_by(short_label) %>%
+      mutate(normvalue = (value - min(value)) / (max(value) - min(value)),
+             normvalue = normvalue * 100) %>%
+      ungroup() 
+    
+    data$short_label <- factor(data$short_label)
+    data$country <- factor(data$country)
+    data <- droplevels(data)
+
+    # Initialize an empty list to store results
+      results_list <- list()
+      predict_list <- list()
+
+    # Iterate over unique levels of short_label
+      for (i in unique(data$short_label)) {
+        dat <- data %>% filter(short_label == i)
+        
+        # Check if there are enough data points for the model
+          model <- lm(normvalue ~ year*FSCI_region, data = dat, weights = weight)
+          result <- broom::tidy(model)
+          predict <- ggeffects::ggpredict(model, c("year", "FSCI_region"))
+
+          # Add short_label to the result
+          result$short_label <- i
+          predict$short_label <- i
+
+          # Add result to list
+          results_list[[i]] <- result 
+          predict_list[[i]] <- predict 
+          }
+    
+    # Combine results into a single data frame
+    all_results <- do.call(rbind, results_list)
+    margins <- do.call(rbind, predict_list)
+    
+    # Bring in theme
+    data2 <- data[, c("short_label", "indicator_order", "theme", "desirable_direction")]
+    data2 <- data2 %>% unique()
+    margins$short_label <- factor(margins$short_label)
+    margins <- left_join(margins, data2, by = c("short_label"))
+    # Clean up 
+    margins <- margins %>%
+      rename(Year = x,
+             y_hat = predicted,
+             SE = std.error,
+             Region = group)
+      
+    marginsplot <- function(data, label) {
+        p <- margins%>% 
+          filter(margins$short_label == label) %>%
+          ggplot(aes(x = as.factor(Year), y = y_hat, color = Region)) +
+          geom_point(size = 1) +
+          geom_line(aes(group = Region), size = 1) +
+          scale_color_manual(values = region_colors) +
+          guides(color = FALSE) +
+          theme_classic() +
+          theme(axis.title.x = element_blank(),
+                axis.title.y = element_text(size = 7),
+                axis.text.x = element_text(size = 5, angle = 45),
+                plot.title = element_text(size = 8)) +
+          labs(y = "Predicted value (% change)") +
+          ggtitle(label) 
+      print(p)
+    }
+
+  # Order themes
+  data$theme <- ordered(data$theme, levels = c("Diets, Nutrition, and Health", "Environment, natural resources, and production", "Livelihoods, Poverty, and Equity", "Governance", "Resilience"))
+
+# Plot per theme
+  n <- 1
+  for (i in levels(data$theme)) {
+    df <- paste0("df_", n)  
+    assign(df, data  %>%
+             filter(theme == i) %>%
+             mutate(short_label = as.factor(short_label)) %>%
+             droplevels()) 
+    ordered_indicators <- get(df)$short_label
+    ind <- paste0("indicators_", n)  
+    assign(ind, as.list(levels(ordered_indicators)))
+    n <- n + 1
+  }
+    
+  # Now run for all the indicators per theme
+    plots_1 <- lapply(indicators_1, function(x) marginsplot(df_1, x)) 
+    plots_2 <- lapply(indicators_2, function(x) marginsplot(df_2, x)) 
+    plots_3 <- lapply(indicators_3, function(x) marginsplot(df_3, x)) 
+    plots_4 <- lapply(indicators_4, function(x) marginsplot(df_4, x)) 
+    plots_5 <- lapply(indicators_5, function(x) marginsplot(df_5, x))
+  
+# Set up a figure for the legend
+    forlegend <- function(data, label) {
+        p <- margins%>% 
+          filter(margins$short_label == label) %>%
+          ggplot(aes(x = as.factor(Year), y = y_hat, color = Region)) +
+          geom_point(size = 1) +
+          geom_line(aes(group = Region), size = 1) +
+          scale_color_manual(values = region_colors) +
+          guides(color = guide_legend()) +
+          theme_classic() +
+          theme(axis.title.x = element_blank(),
+                axis.title.y = element_text("Predicted outcome"),
+                axis.text.x = element_blank(),
+                plot.title = element_text(size = 8),
+                legend.text = element_text(size=7),
+                legend.title.align = 0,
+                legend.position = "right", 
+                legend.justification = "left",
+                legend.direction = "horizontal",
+                legend.title = element_blank()) +
+          ggtitle(label) 
+      print(p)
+    }
+  for_legend <- lapply(indicators_5, function(label) forlegend(df_5, label))
+  legend <- get_legend(for_legend[[1]])
+  
+  # Combine the figures per indicator into a single plot per theme
+    p1 <- cowplot::plot_grid(plotlist = plots_1, ncol = 3, align = 'v')
+    p2 <- cowplot::plot_grid(plotlist = plots_2, ncol = 3, align = 'v')
+    p3 <- cowplot::plot_grid(plotlist = plots_3, ncol = 2, align = 'v')
+    p4 <- cowplot::plot_grid(plotlist = plots_4, ncol = 2, align = 'v')
+    p5 <- cowplot::plot_grid(plotlist = plots_5, ncol = 2, align = 'v')
+  
+  # Add legend and save figure
+    png(file.path(figtab_out, "SI Figure X_Theme1_trendlines.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p1,legend, nrow = 2, rel_heights = c(17,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme2_trendlines.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p2,legend, nrow = 2, rel_heights = c(17,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme3_trendlines.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p3,legend, nrow = 2, rel_heights = c(17,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme4_trendlines.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p4,legend, nrow = 2, rel_heights = c(17,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme5_trendlines.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p5,legend, nrow = 2, rel_heights = c(17,1), align = "hv")
+      dev.off()
+
+  # Clean up
+    for (i in 1:5) {
+      if (exists(paste0("df_", i))) {
+        rm(list = paste0("df_", i), envir = .GlobalEnv)
+      }
+      if (exists(paste0("plots_", i))) {
+        rm(list = paste0("plots_", i), envir = .GlobalEnv)
+      }
+      if (exists(paste0("indicators_", i))) {
+        rm(list = paste0("indicators_", i), envir = .GlobalEnv)
+      }
+      if (exists(paste0("p", i))) {
+        rm(list = paste0("p", i), envir = .GlobalEnv)
+      }
+    }
+
+
+# Clean up
+    rm(all_results, p1,p2,p3,p4,top,bottom,forlegend, legend, oneyear, dat, data2, for_legend, model, predict, predict_list, result, results_list, margins)
+
+```
+
+$~$
+
+#### SI Figures X-XX: All data with the global weighted mean by thematic area
+Graphs over time - all country level data points
+Note: where there are points in 2022-2024 with no global mean, it is because there is no data for the weighting variable available yet for that year.
+
+This code creates one figure per theme.
+```{r, warning = FALSE, messages = FALSE, cache = TRUE}
+ # Make the global mean into a row to visualize "as a country"
+    data <- FSCI_2025 %>%
+      filter(!(unit == "categorical")) %>%
+      mutate(value = as.numeric(value)) %>%
+      select(c(country, country_order, value, indicator, year, unit, variable, short_label, variable_order, theme, domain, desirable_direction, globalmean))
+
+    globalmean <- data %>%
+      select(-c(country, country_order, value)) %>%
+      mutate(value = globalmean,
+             country = "Global weighted mean",
+             country_order = 195,
+             M49_code = "",
+             ISO3 = "") %>%
+      unique() 
+   globalmean <- globalmean[, c("country", "country_order", "value", "indicator", "year", "unit", "variable", "short_label", "variable_order", "theme", "domain", "desirable_direction", "globalmean")]
+   
+    data <- data  
+    # Bind rows
+      data <- rbind(data, globalmean)
+    
+  # Remove global weighted mean for indicators where there are different countries shown per year
+    oneyear <- c("Fisheries health index")
+    surveyindicators <- c("All 5 food groups", "Child labor", 
+                          "Female landholdings", 
+                          "Minimum dietary diversity, child",                   
+                          "Minimum dietary diversity, women", "NCD-Protect",
+                          "NCD-Risk", "Reduced coping strategies",
+                          "Social protection adequacy", 
+                          "Social protection coverage", 
+                          "Soft drink consumption", 
+                          "Zero fruits or vegetables, adult", 
+                          "Zero fruits or vegetables, child",
+                          "Protective foods",
+                          "Unhealthy foods")
+    data <- data %>%
+      mutate(value = case_when(short_label %in% surveyindicators & country == "Global weighted mean" ~ NA, 
+                               TRUE ~ value))
+      
+  # Organize
+    data <- droplevels(data)
+    data <- data %>% arrange(indicator, year, country_order) 
+    data$short_label <- as.character(data$short_label)
+    data$theme <- ordered(data$theme, levels = c("Diets, Nutrition, and Health", "Environment, natural resources, and production", "Livelihoods, Poverty, and Equity", "Governance", "Resilience"))
+    
+  # Plot
+    plotdot <- function(data, x) {
+        p <- data %>% 
+          filter(short_label == x) %>%
+          arrange(country_order, year) %>%
+          ggplot(aes(x = year, y = value, group = country)) +
+          geom_point(aes(color = country)) + 
+          scale_color_manual(values = ifelse(data$country == "Global weighted mean",
+                                              "maroon", "lightgray")) +
+          guides(color = guide_none()) +
+          theme_classic() +
+          theme(axis.title.x = element_blank(),
+                axis.title.y = element_blank(),
+                axis.text.x = element_text(size = 5, angle = 45),
+                plot.title = element_text(size = 8),
+                plot.subtitle = element_text(size = 7, color = "black")) +
+          labs(title = x) 
+    }
+
+  # Plot per theme
+    n <- 1
+      for (i in levels(data$theme)) {
+        df <- paste0("df_", n)  
+        assign(df, data %>%
+                 filter(theme == i) %>%
+                 mutate(indicator = as.factor(indicator),
+                        year = as.factor(year)) %>%
+                 droplevels() %>%
+                 arrange(indicator, year, country_order)) 
+        ordered_indicators <- fct_reorder(get(df)$short_label, get(df)$variable_order)
+        ind <- paste0("indicators_", n)  
+        assign(ind, as.list(levels(ordered_indicators)))
+        n <- n + 1
+        }
+      
+      plots_1 <- lapply(indicators_1, function(x) plotdot(df_1, x)) 
+      plots_2 <- lapply(indicators_2, function(x) plotdot(df_2, x)) 
+      plots_3 <- lapply(indicators_3, function(x) plotdot(df_3, x)) 
+      plots_4 <- lapply(indicators_4, function(x) plotdot(df_4, x)) 
+      plots_5 <- lapply(indicators_5, function(x) plotdot(df_5, x)) 
+
+  # Set up a figure for the legend
+  forlegend <- function(data, x) {
+        p <- data %>% 
+          filter(short_label == x) %>%
+          arrange(country_order, year) %>%
+          ggplot(aes(x = year, y = value, group = country)) +
+          geom_point(aes(color = country), size = 3) + 
+          scale_color_manual(values = ifelse(data$country == "Global weighted mean",
+                                              "maroon", "lightgray"),
+                             labels = c("Country data point", "Global weighted mean")) +
+          guides(color = guide_legend()) +
+          theme_classic() +
+          theme(axis.title.x = element_blank(),
+                axis.title.y = element_blank(),
+                axis.text.x = element_blank(),
+                plot.title = element_text(size = 8),
+                legend.text = element_text(size=9),
+                legend.title.align = 0,
+                legend.position = "right", 
+                legend.justification = "left",
+                legend.direction = "horizontal",
+                legend.title = element_blank())
+    }
+                
+  df_2_leg <- df_2 %>% filter(country == "Italy" | country == "Global weighted mean")
+  for_legend <- lapply(indicators_2, function(x) forlegend(df_2_leg, x))
+  legend <- get_legend(for_legend[[7]])
+  
+  # Combine the figures per indicator into a single plot per theme
+    p1 <- cowplot::plot_grid(plotlist = plots_1, ncol = 3, align = 'v')
+    p2 <- cowplot::plot_grid(plotlist = plots_2, ncol = 3, align = 'v')
+    p3 <- cowplot::plot_grid(plotlist = plots_3, ncol = 2, align = 'v')
+    p4 <- cowplot::plot_grid(plotlist = plots_4, ncol = 2, align = 'v')
+    p5 <- cowplot::plot_grid(plotlist = plots_5, ncol = 2, align = 'v')
+  
+  # Add legend and save figure
+    png(file.path(figtab_out, "SI Figure X_Theme1 all data.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p1,legend, nrow = 2, rel_heights = c(22,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme2  all data.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p2,legend, nrow = 2, rel_heights = c(22,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme3  all data.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p3,legend, nrow = 2, rel_heights = c(22,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme4  all data.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p4,legend, nrow = 2, rel_heights = c(22,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme5  all data.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p5,legend, nrow = 2, rel_heights = c(22,1), align = "hv")
+      dev.off()
+
+  # Clean up
+    rm(ordered_indicators, indicators, forpaper, data, data2, plots, df_2_leg, legend, for_legend, globalmean, globalmeans)
+    for (i in 1:5) {
+      if (exists(paste0("df_", i))) {
+        rm(list = paste0("df_", i), envir = .GlobalEnv)
+      }
+      if (exists(paste0("p", i))) {
+        rm(list = paste0("p", i), envir = .GlobalEnv)
+      }
+      if (exists(paste0("plots_", i))) {
+        rm(list = paste0("plots_", i), envir = .GlobalEnv)
+      }
+      if (exists(paste0("indicators_", i))) {
+        rm(list = paste0("indicators_", i), envir = .GlobalEnv)
+      }
+
+    }
+
+```
+
+
+#### SI Figures X-XX: Data points by region
+This code creates one figure per theme.
+```{r, warning = FALSE, messages = FALSE, cache = TRUE}
+# Set up the data with only aggregate values
+    oneyear <- c("Fisheries health index")
+    surveyindicators <- c("All 5 food groups", "Child labor", 
+                          "Female landholdings", 
+                          "Minimum dietary diversity, child",                   
+                          "Minimum dietary diversity, women", "NCD-Protect",
+                          "NCD-Risk", "Reduced coping strategies",
+                          "Social protection adequacy", 
+                          "Social protection coverage", 
+                          "Soft drink consumption", 
+                          "Zero fruits or vegetables, adult", 
+                          "Zero fruits or vegetables, child",
+                          "Protective foods",
+                          "Unhealthy foods")
+
+  data <- FSCI_2025 %>%
+    filter(!(unit == "categorical")) %>%
+    filter(!(is.na(indicator_order))) %>%
+    # Eliminate survey indicators
+    filter(!(short_label %in% surveyindicators)) %>%
+    select(c(desirable_direction, year, short_label, indicator_order, regionmean, FSCI_region, incomegrpmean, income_group, globalmean, theme)) %>% unique() %>%
+    arrange(indicator_order, year) %>%
+    mutate(year = as.factor(year)) %>%
+    rename('Global mean' = globalmean)
+  data <- droplevels(data)
+  data$short_label <- factor(data$short_label)
+  data <- data %>% droplevels()
+  
+  # Order themes
+  data$theme <- ordered(data$theme, levels = c("Diets, Nutrition, and Health", "Environment, natural resources, and production", "Livelihoods, Poverty, and Equity", "Governance", "Resilience"))
+
+# Regional means data
+    regions <- data %>%
+      select(-c("income_group", "incomegrpmean")) %>%
+      unique() %>%
+      filter(!(is.na(FSCI_region))) %>%
+      pivot_wider(names_from = FSCI_region, values_from = regionmean) %>%
+      arrange(indicator_order) %>%
+      relocate('Global mean', .after = 'Central Asia') %>%
+      pivot_longer(6:15, names_to = "group", values_to = "value")
+    regions <- droplevels(regions)
+    regions$group <- factor(regions$group)
+
+# Plot function
+    plotlines <- function(data, x, colors) {
+        p <- data %>% 
+          filter(short_label == x) %>%
+          arrange(indicator_order, year) %>%
+          ggplot(aes(x = year, y = value, group = group)) +
+          geom_point(aes(color = group)) + 
+          geom_line(aes(color = group), size = 0.5) + 
+          scale_color_manual(values = colors) +
+          guides(color = FALSE) +
+          theme_classic() +
+          theme(axis.title.x = element_blank(),
+                axis.title.y = element_blank(),
+                axis.text.x = element_text(size = 5, angle = 45),
+                plot.title = element_text(size = 8)) +
+          ggtitle(x) 
+      print(p)
+    }
+    
+# Run for all indicators   
+  ordered_indicators <- fct_reorder(data$short_label, data$indicator_order)
+  indicators <- as.list(levels(ordered_indicators))
+  lapply(indicators, function(x) plotlines(regions, x, region_colors))  
+
+# Plot per theme - income
+  n <- 1
+  for (i in levels(data$theme)) {
+    df <- paste0("df_", n)  
+    assign(df, regions %>%
+             filter(theme == i) %>%
+             mutate(short_label = as.factor(short_label),
+                    year = as.factor(year)) %>%
+             droplevels() %>%
+             arrange(short_label, year, group)) 
+    ordered_indicators <- fct_reorder(get(df)$short_label, get(df)$indicator_order)
+    ind <- paste0("indicators_", n)  
+    assign(ind, as.list(levels(ordered_indicators)))
+    n <- n + 1
+  }
+    
+  # Now run for all the indicators per theme
+    plots_1 <- lapply(indicators_1, function(x) plotlines(df_1, x, region_colors)) 
+    plots_2 <- lapply(indicators_2, function(x) plotlines(df_2, x, region_colors)) 
+    plots_3 <- lapply(indicators_3, function(x) plotlines(df_3, x, region_colors)) 
+    plots_4 <- lapply(indicators_4, function(x) plotlines(df_4, x, region_colors)) 
+    plots_5 <- lapply(indicators_5, function(x) plotlines(df_5, x, region_colors))
+  
+# Set up a figure for the legend
+  forlegend <- function(data, x, colors) {
+        p <- data %>% 
+          filter(short_label == x) %>%
+          arrange(indicator_order, year) %>%
+          ggplot(aes(x = year, y = value, group = group)) +
+          geom_point(aes(color = group)) + 
+          geom_line(aes(color = group), size = 0.5) + 
+          scale_color_manual(values = colors) +
+          guides(color = guide_legend(nrow=2)) +
+          theme_classic() +
+          theme(axis.title.x = element_blank(),
+                axis.title.y = element_blank(),
+                axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+                plot.title = element_text(size = 8),
+                legend.text = element_text(size=8),
+                legend.title.align = 0,
+                legend.position = "right", 
+                legend.justification = "left",
+                legend.direction = "horizontal",
+                legend.title = element_blank()) +
+          ggtitle(x) 
+      print(p)
+  }
+  for_legend <- lapply(indicators_5, function(x) forlegend(df_5, x, region_colors))
+  legend <- get_legend(for_legend[[1]])
+  
+  # Combine the figures per indicator into a single plot per theme
+    p1 <- cowplot::plot_grid(plotlist = plots_1, ncol = 3, align = 'v')
+    p2 <- cowplot::plot_grid(plotlist = plots_2, ncol = 3, align = 'v')
+    p3 <- cowplot::plot_grid(plotlist = plots_3, ncol = 2, align = 'v')
+    p4 <- cowplot::plot_grid(plotlist = plots_4, ncol = 2, align = 'v')
+    p5 <- cowplot::plot_grid(plotlist = plots_5, ncol = 2, align = 'v')
+
+  png(file.path(figtab_out, "SI Figure X_Theme1_region.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p1,legend, nrow = 2, rel_heights = c(18,1), align = "hv")
+  dev.off()
+  png(file.path(figtab_out, "SI Figure X_Theme2_region.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p2,legend, nrow = 2, rel_heights = c(18,1), align = "hv")
+  dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme3_region.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p3,legend, nrow = 2, rel_heights = c(18,1), align = "hv")
+  dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme4_region.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p4,legend, nrow = 2, rel_heights = c(18,1), align = "hv")
+  dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme5_region.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p5,legend, nrow = 2, rel_heights = c(18,1), align = "hv")
+  dev.off()
+
+  # Clean up
+    rm(up, down, ordered_indicators, indicators, forpaper, data, data2, plots, for_legend, legend, regions)
+    for (i in 1:9) {
+      if (exists(paste0("df_", i))) {
+        rm(list = paste0("df_", i), envir = .GlobalEnv)
+      }
+      if (exists(paste0("plots_", i))) {
+        rm(list = paste0("plots_", i), envir = .GlobalEnv)
+      }
+       if (exists(paste0("p", i))) {
+        rm(list = paste0("p", i), envir = .GlobalEnv)
+      }
+     if (exists(paste0("indicators_", i))) {
+        rm(list = paste0("indicators_", i), envir = .GlobalEnv)
+      }
+      
+    }
+
+```
+
+
+#### SI Figures X-XX: Data points by income group
+This code creates one figure per theme.
+```{r, warning = FALSE, messages = FALSE, cache = TRUE}
+# Set up the data with only aggregate values
+    oneyear <- c("Fisheries health index")
+    surveyindicators <- c("All 5 food groups", "Child labor", 
+                          "Female landholdings", 
+                          "Minimum dietary diversity, child",                   
+                          "Minimum dietary diversity, women", "NCD-Protect",
+                          "NCD-Risk", "Reduced coping strategies",
+                          "Social protection adequacy", 
+                          "Social protection coverage", 
+                          "Soft drink consumption", 
+                          "Zero fruits or vegetables, adult", 
+                          "Zero fruits or vegetables, child",
+                          "Protective foods",
+                          "Unhealthy foods")
+
+  data <- FSCI_2025 %>%
+    filter(!(unit == "categorical")) %>%
+    filter(!(is.na(indicator_order))) %>%
+    # Eliminate survey indicators
+    filter(!(short_label %in% surveyindicators)) %>%
+    select(c(desirable_direction, year, short_label, indicator_order, regionmean, FSCI_region, incomegrpmean, income_group, globalmean, theme)) %>% unique() %>%
+    arrange(indicator_order, year) %>%
+    mutate(year = as.factor(year)) %>%
+    rename('Global mean' = globalmean)
+  data <- droplevels(data)
+  data$short_label <- factor(data$short_label)
+  data <- data %>% droplevels()
+  
+  # Order themes
+  data$theme <- ordered(data$theme, levels = c("Diets, Nutrition, and Health", "Environment, natural resources, and production", "Livelihoods, Poverty, and Equity", "Governance", "Resilience"))
+
+# Income group and metadata table
+    incomegroups <- data %>%
+      select(-c("FSCI_region", "regionmean")) %>%
+      unique() %>%
+      filter(!(is.na(income_group))) %>%
+      pivot_wider(names_from = income_group, values_from = incomegrpmean) %>%
+      arrange(indicator_order) %>%
+      relocate('Global mean', .after = 'High income') %>%
+      relocate('Upper middle income', .after = 'Lower middle income') %>%
+      pivot_longer(6:10, names_to = "group", values_to = "value")
+    incomegroups <- droplevels(incomegroups)
+
+# Plot function
+    plotlines <- function(data, x, colors) {
+        p <- data %>% 
+          filter(short_label == x) %>%
+          arrange(indicator_order, year) %>%
+          ggplot(aes(x = year, y = value, group = group)) +
+          geom_point(aes(color = group)) + 
+          geom_line(aes(color = group), size = 0.5) + 
+          scale_color_manual(values = colors) +
+          guides(color = FALSE) +
+          theme_classic() +
+          theme(axis.title.x = element_blank(),
+                axis.title.y = element_blank(),
+                axis.text.x = element_text(size = 5, angle = 45),
+                plot.title = element_text(size = 8)) +
+          ggtitle(x) 
+      print(p)
+    }
+
+# Run for all indicators    
+  ordered_indicators <- fct_reorder(data$short_label, data$indicator_order)
+  indicators <- as.list(levels(ordered_indicators))
+  lapply(indicators, function(x) plotlines(incomegroups, x, income_colors))
+    
+# Plot per theme - income
+  n <- 1
+  for (i in levels(data$theme)) {
+    df <- paste0("df_", n)  
+    assign(df, incomegroups %>%
+             filter(theme == i) %>%
+             mutate(short_label = as.factor(short_label),
+                    year = as.factor(year)) %>%
+             droplevels() %>%
+             arrange(short_label, year, group)) 
+    ordered_indicators <- fct_reorder(get(df)$short_label, get(df)$indicator_order)
+    ind <- paste0("indicators_", n)  
+    assign(ind, as.list(levels(ordered_indicators)))
+    n <- n + 1
+  }
+    
+  # Now run for all the indicators per theme
+    plots_1 <- lapply(indicators_1, function(x) plotlines(df_1, x, income_colors)) 
+    plots_2 <- lapply(indicators_2, function(x) plotlines(df_2, x, income_colors)) 
+    plots_3 <- lapply(indicators_3, function(x) plotlines(df_3, x, income_colors)) 
+    plots_4 <- lapply(indicators_4, function(x) plotlines(df_4, x, income_colors)) 
+    plots_5 <- lapply(indicators_5, function(x) plotlines(df_5, x, income_colors))
+  
+# Set up a figure for the legend
+  forlegend <- function(data, x, colors) {
+        p <- data %>% 
+          filter(short_label == x) %>%
+          arrange(indicator_order, year) %>%
+          ggplot(aes(x = year, y = value, group = group)) +
+          geom_point(aes(color = group)) + 
+          geom_line(aes(color = group), size = 0.5) + 
+          scale_color_manual(values = colors) +
+          guides(color = guide_legend()) +
+          theme_classic() +
+          theme(axis.title.x = element_blank(),
+                axis.title.y = element_blank(),
+                axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+                plot.title = element_text(size = 8),
+                legend.text = element_text(size=8),
+                legend.title.align = 0,
+                legend.position = "right", 
+                legend.justification = "left",
+                legend.direction = "horizontal",
+                legend.title = element_blank()) +
+          ggtitle(x) 
+      print(p)
+  }
+  for_legend <- lapply(indicators_5, function(x) forlegend(df_5, x, income_colors))
+  legend <- get_legend(for_legend[[1]])
+  
+  # Combine the figures per indicator into a single plot per theme
+    p1 <- cowplot::plot_grid(plotlist = plots_1, ncol = 3, align = 'v')
+    p2 <- cowplot::plot_grid(plotlist = plots_2, ncol = 3, align = 'v')
+    p3 <- cowplot::plot_grid(plotlist = plots_3, ncol = 2, align = 'v')
+    p4 <- cowplot::plot_grid(plotlist = plots_4, ncol = 2, align = 'v')
+    p5 <- cowplot::plot_grid(plotlist = plots_5, ncol = 2, align = 'v')
+  
+  # Add legend and save figure
+    png(file.path(figtab_out, "SI Figure X_Theme1_income.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p1,legend, nrow = 2, rel_heights = c(22,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme2_income.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p2,legend, nrow = 2, rel_heights = c(22,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme3_income.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p3,legend, nrow = 2, rel_heights = c(22,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme4_income.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p4,legend, nrow = 2, rel_heights = c(22,1), align = "hv")
+      dev.off()
+    png(file.path(figtab_out, "SI Figure X_Theme5_income.png"), width = 7.5, height = 10, unit = "in", res = 300)
+      cowplot::plot_grid(p5,legend, nrow = 2, rel_heights = c(22,1), align = "hv")
+      dev.off()
+
+  # Clean up
+    rm(incomegroups, data, for_legend, indicators, legend)
+    for (i in 1:5) {
+      if (exists(paste0("df_", i))) {
+        rm(list = paste0("df_", i), envir = .GlobalEnv)
+      }
+     if (exists(paste0("plots_", i))) {
+        rm(list = paste0("plots_", i), envir = .GlobalEnv)
+      }
+      if (exists(paste0("indicators_", i))) {
+        rm(list = paste0("indicators_", i), envir = .GlobalEnv)
+      }
+      if (exists(paste0("p", i))) {
+        rm(list = paste0("p", i), envir = .GlobalEnv)
+      }
+    }
+
+```
+
+#### Supplementary Data 1: Metadata and Codebook Latest data point per indicator
+This code creates the table that lists the latest data point per country-indicator pair
+```{r, warning = FALSE, messages = FALSE, echo = TRUE}
+  # Latest data point
+    latest_df <- FSCI_2025 %>%
+      filter(!(is.na(value))) %>%
+      group_by(country, indicator) %>%
+      mutate(maxyear = max(year)) %>%
+      ungroup() %>%
+      filter(year == maxyear) %>%
+      sort_by(country ~ indicator_order) 
+
+  # To fix indicator column ordering
+    indicator_order <- latest_df %>% 
+      select(c(short_label, indicator_order)) %>%
+      unique()
+    # Create a complete list by country
+    complete_grid <- latest_df %>%
+      select(c(country)) %>% unique()
+    complete_grid <- merge(complete_grid, indicator_order) %>%
+      arrange(country, indicator_order)
+    
+    for_metadata <- latest_df %>%
+      select(c(1,5,9)) 
+    for_metadata <- left_join(complete_grid, for_metadata, by = c("country", "short_label"))
+
+  for_metadata <- for_metadata %>%
+    select(-c(indicator_order)) %>%
+    pivot_wider(names_from = short_label, values_from = year) %>%
+    mutate(across(c(2:58), as.character),
+           across(c(2:58), na_if, "NA"))
+  writexl::write_xlsx(for_metadata, file.path(data_out, "Latest data point per country-indicator.xlsx"))
+  # This sheet is manually added to Supplementary Data 1 - Metadata and Codebook 
+```
+
+---
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+```
