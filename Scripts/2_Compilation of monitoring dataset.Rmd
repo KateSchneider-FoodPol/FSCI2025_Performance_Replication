@@ -382,7 +382,7 @@ load(file.path(data_in, "mufpp_2025_archive.RData"))
     emissions_change <- emissions_change %>%
       mutate(indicator = "Agri-food systems greenhouse gas emissions change",
              unit = "Percent change relative to 2000-2010 country average baseline",
-             value = (((value - baseline_value)/baseline_value)*100)+100) %>%
+             value = ((value - baseline_value)/baseline_value)*100) %>%
       select(-c(baseline_value))
     
     fao_data <- rbind(fao_data, emissions_change)

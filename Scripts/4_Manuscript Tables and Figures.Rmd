@@ -1698,7 +1698,7 @@ cat("✓ Supplementary Figure 3 saved\n")
             legend.title = element_text(size=12),
             plot.margin = unit(c(0,0,0,0), "cm"),
             legend.margin=unit(c(0,0,0,0), "cm"))
-    legend <- get_legend(forlegend)
+    legend <- cowplot::get_legend(forlegend)
 
 # Save the plot as .png
      png(file.path(figtab_out, "SI Figure 4_Trends.png"), width = 7.5, height = 10, unit = "in", res = 300)
@@ -2230,6 +2230,7 @@ cat("✓ Combined Figure 2-3 saved\n")
 ```
 
 #### Repeat tables and figures updating prior papers
+#### ARE ANY OF THESE IN THE SUPPLEMENTARY MATERIALS? IF NOT, DELETE ALL THIS CODE FROM HERE
 ```{r}
 ### Color palettes
     themes_colors <- c("#21908dff", "#3b518bff", "#97a4b2", "#fde725ff", "#5cc863ff")
