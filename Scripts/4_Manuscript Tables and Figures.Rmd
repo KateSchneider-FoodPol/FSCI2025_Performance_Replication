@@ -1701,12 +1701,12 @@ cat("✓ Supplementary Figure 3 saved\n")
     legend <- get_legend(forlegend)
 
 # Save the plot as .png
-     png(file.path(figtab_out, "SI Figure X_Trends.png"), width = 7.5, height = 10, unit = "in", res = 300)
+     png(file.path(figtab_out, "SI Figure 4_Trends.png"), width = 7.5, height = 10, unit = "in", res = 300)
      cowplot::plot_grid(p1, legend, nrow = 2, rel_heights = c(22,1), align = "v")
      dev.off()
 #     
 # # And as PDF for journal
-    pdf(file.path(figtab_out, "SI Figure X_Trends.pdf"), width = 7.5, height = 10)
+    pdf(file.path(figtab_out, "SI Figure 4_Trends.pdf"), width = 7.5, height = 10)
     cowplot::plot_grid(p1, legend, nrow = 2, rel_heights = c(22,1), align = "v")
     dev.off()
 
@@ -2227,6 +2227,28 @@ img_comb <- image_read(file.path(figtab_out, "Figure_2_3_Combined.png"))
 image_write(img_comb, path = file.path(figtab_out, "Figure_2_3_Combined.pdf"),
             format = "pdf", density = "300x300")
 cat("✓ Combined Figure 2-3 saved\n")
+```
+
+#### Repeat tables and figures updating prior papers
+```{r}
+### Color palettes
+    themes_colors <- c("#21908dff", "#3b518bff", "#97a4b2", "#fde725ff", "#5cc863ff")
+    categories <- c("#97ebdb", "#0086ad", "#005582", "gray80")
+    income_colors <- c("Low income" = "#97a4b2", 
+                      "Lower middle income"  = "#41B6C4", 
+                      "Upper middle income" = "#1D91C0", 
+                      "High income" = "#0C2C84",
+                      "Global mean" = "gray25")
+    region_colors <- c("Central Asia" = "#CC6677FF",
+                      "Eastern Asia" = "#332288FF",                  
+                      "Latin America & Caribbean" = "#DDCC77FF",     
+                      "Northern Africa & Western Asia" = "#117733FF", 
+                      "Northern America and Europe" = "#88CCEEFF",    
+                      "Oceania" = "#882255FF",
+                      "South-eastern Asia" =  "#44AA99FF",            
+                      "Southern Asia" = "#999933FF",                  
+                      "Sub-Saharan Africa" = "#AA4499FF",
+                       "Global mean" = "gray25")
 ```
 
 #### SI Table X. Regression results of time trends

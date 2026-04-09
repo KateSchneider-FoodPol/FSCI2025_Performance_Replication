@@ -179,14 +179,14 @@ load(file.path(data_in, "mufpp_2025_archive.RData"))
                                      indicator == "Area harvested" & item == "Vegetables Primary" ~ "Area harvested (denominator of yield values), vegetables",
                                      TRUE ~ indicator))
     
-    # Transform yields into tonnes/ha (from 100g/ha) and kg/animal (from 100g/animal) so that we have the same units of measure across items for yield indicator
+    # Transform yields into tonnes/ha (from kg/ha) and kg/animal (from 100g/animal) so that we have the same units of measure across items for yield indicator. NOTE to look carefully at units in future API pulls as the yield units for animal products will have changed (they had not as of this data pull but were subsequently revised).
       fao_data <- fao_data %>%
         mutate(value = as.numeric(value),
                value = case_when(str_detect(indicator, pattern = "^Yield") & item == "Meat of cattle with the bone, fresh or chilled" ~ value/10,
                                  str_detect(indicator, pattern = "^Yield") & item == "Raw milk of cattle" ~ value/10,
-                                 str_detect(indicator, pattern = "^Yield") & item == "Cereals, primary" ~ value/10000,
-                                 str_detect(indicator, pattern = "^Yield") & item == "Fruit Primary" ~ value/10000,
-                                 str_detect(indicator, pattern = "^Yield") & item == "Vegetables Primary" ~ value/10000,
+                                 str_detect(indicator, pattern = "^Yield") & item == "Cereals, primary" ~ value/1000,
+                                 str_detect(indicator, pattern = "^Yield") & item == "Fruit Primary" ~ value/1000,
+                                 str_detect(indicator, pattern = "^Yield") & item == "Vegetables Primary" ~ value/1000,
                                  TRUE ~ value),
                unit = case_when(str_detect(indicator, pattern = "^Yield") & item == "Meat of cattle with the bone, fresh or chilled" ~ "kg/animal",
                                  str_detect(indicator, pattern = "^Yield") & item == "Raw milk of cattle" ~ "kg/animal",
