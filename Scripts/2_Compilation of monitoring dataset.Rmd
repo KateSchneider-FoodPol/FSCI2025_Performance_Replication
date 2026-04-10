@@ -1910,8 +1910,9 @@ Save individual files by data source of cleaned data
       select(-c(unit, short_label, indicator, 10:16,19:20)) %>%
       pivot_wider(id_cols = c("country", "year", "M49_code", "ISO3", "income_group", "FSCI_region"),
                   names_from = variable,
-                  values_from = value) %>%
-      select(-c(protect_foods, unhealthy_foods))
+                  values_from = value) 
+    # %>%
+    #   select(-c(protect_foods, unhealthy_foods))
 
   # Filter weighting variables from the long data and merge back in wide form
     data <- data %>%
@@ -1953,7 +1954,7 @@ Save individual files by data source of cleaned data
           filter(!(is.na(weight))) %>%
           mutate(globalmean = stats::weighted.mean(value, weight, na.rm = TRUE)) %>%
           ungroup() %>%
-        select(c(5,8,40)) %>%
+        select(c(5,8,42)) %>%
         unique()
     
       # Regional mean
@@ -1964,7 +1965,18 @@ Save individual files by data source of cleaned data
           filter(!(is.na(weight))) %>%
           mutate(regionmean = stats::weighted.mean(value, weight, na.rm = TRUE)) %>%
           ungroup() %>%
-          select(c(5,8,18,40)) %>%
+          select(c(5,8,18,42)) %>%
+          unique()
+        
+      # Continental mean
+        continentmeans <- data %>%
+          group_by(indicator, year, `UN Continental Region`) %>%
+          filter(!(is.na(`UN Continental Region`))) %>%
+          filter(!(is.na(value))) %>%
+          filter(!(is.na(weight))) %>%
+          mutate(continentmean = stats::weighted.mean(value, weight, na.rm = TRUE)) %>%
+          ungroup() %>%
+          select(c(5,8,19,42)) %>%
           unique()
   
       # Income group mean
@@ -1975,7 +1987,7 @@ Save individual files by data source of cleaned data
           filter(!(is.na(weight))) %>%
           mutate(incomegrpmean = stats::weighted.mean(value, weight, na.rm = TRUE)) %>%
           ungroup() %>%
-          select(c(5,8,17,40)) %>%
+          select(c(5,8,17,42)) %>%
           unique()
     
   # Merge the means back into the FSCI_2025 dataframe
@@ -1991,13 +2003,14 @@ Save individual files by data source of cleaned data
                                          TRUE ~ indicator_order))
       # Remove excess variables from the dataframe with the weighting variables wide
       data <- data %>%
-        select(c(1,5,8,21:39)) 
+        select(c(1,5,8,21:38,41)) 
       # Now join in with the weight variables as columns
       FSCI_2025 <- left_join(FSCI_2025, data, by = c("country", "year", "variable"))
       # Now add the grouped weighted means 
       FSCI_2025 <- left_join(FSCI_2025, globalmeans, by = c("year", "variable"))
       FSCI_2025 <- left_join(FSCI_2025, regionmeans, by = c("year", "variable", "FSCI_region"))
       FSCI_2025 <- left_join(FSCI_2025, incomemeans, by = c("year", "variable", "income_group")) 
+      FSCI_2025 <- left_join(FSCI_2025, continentmeans, by = c("year", "variable", "UN Continental Region")) 
       
   # Remove extreme values for change in cropland >-200% (Montenegro 2013-2017)
       FSCI_2025 <- FSCI_2025 %>%
