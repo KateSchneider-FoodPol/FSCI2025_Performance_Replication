@@ -15,11 +15,9 @@ The files should be opened through the R project file so that all file paths wor
 
 SCRIPTS:
 
-
 EXPECTED PROCESSING TIME: Several steps in the data management script require several minutes to run. When processing the spatial data for the Milan Urban Food Policy Pact indicator, working memory may also be a constraint on certain systems. 
 
 OUTPUT DATASETS:
-Six datasets are created using the Data management script, listed below (supplementary data files 2-7). Intermediate datasets created for each indicator or data source and final datasets for subsequent analysis are saved in the "Output Data" folder. 
 
 SUPPLEMENTARY FILES:
 # Supplementary data file 1: "Supplementary Data 1 - Metadata and Codebook.xlsx" 
@@ -27,5 +25,5 @@ SUPPLEMENTARY FILES:
 
 
 CONTACT: 
-Bianca Carducci
-Kate Schneider Lecy, k.schneider.lecy@gmail.com
+Bianca Carducci, bianca.carducci@alumni.utoronto.ca
+Kate Schneider Lecy, k.schneider.lecy@asu.edu
