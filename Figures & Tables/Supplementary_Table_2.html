@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<style>body{background-color:white;}</style>
+
+
+</head>
+<body>
+<div id="cylguogeel" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+  <style>#cylguogeel table {
+  font-family: sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#cylguogeel thead, #cylguogeel tbody, #cylguogeel tfoot, #cylguogeel tr, #cylguogeel td, #cylguogeel th {
+  border-style: none;
+}
+
+#cylguogeel p {
+  margin: 0;
+  padding: 0;
+}
+
+#cylguogeel .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: 0px;
+  margin-right: 0px;
+  color: #333333;
+  font-size: 24px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 0px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 0px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#cylguogeel .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#cylguogeel .gt_title {
+  color: #333333;
+  font-size: 36px;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#cylguogeel .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#cylguogeel .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#cylguogeel .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 0px;
+  border-bottom-color: #D3D3D3;
+}
+
+#cylguogeel .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 0px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#cylguogeel .gt_col_heading {
+  color: #333333;
+  background-color: #F8F9FA;
+  font-size: 28px;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 4px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#cylguogeel .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #F8F9FA;
+  font-size: 28px;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#cylguogeel .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#cylguogeel .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#cylguogeel .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#cylguogeel .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#cylguogeel .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #F8F9FA;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 0px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 0px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#cylguogeel .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #F8F9FA;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 0px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 0px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#cylguogeel .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#cylguogeel .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#cylguogeel .gt_row {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 0px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 0px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#cylguogeel .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#cylguogeel .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#cylguogeel .gt_row_group_first td {
+  border-top-width: 0px;
+}
+
+#cylguogeel .gt_row_group_first th {
+  border-top-width: 0px;
+}
+
+#cylguogeel .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#cylguogeel .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#cylguogeel .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#cylguogeel .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#cylguogeel .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#cylguogeel .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#cylguogeel .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#cylguogeel .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#cylguogeel .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 0px;
+  border-bottom-color: #D3D3D3;
+}
+
+#cylguogeel .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#cylguogeel .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#cylguogeel .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#cylguogeel .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#cylguogeel .gt_left {
+  text-align: left;
+}
+
+#cylguogeel .gt_center {
+  text-align: center;
+}
+
+#cylguogeel .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#cylguogeel .gt_font_normal {
+  font-weight: normal;
+}
+
+#cylguogeel .gt_font_bold {
+  font-weight: bold;
+}
+
+#cylguogeel .gt_font_italic {
+  font-style: italic;
+}
+
+#cylguogeel .gt_super {
+  font-size: 65%;
+}
+
+#cylguogeel .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#cylguogeel .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#cylguogeel .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#cylguogeel .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#cylguogeel .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#cylguogeel .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#cylguogeel .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#cylguogeel .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#cylguogeel div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+  <table class="gt_table" style="table-layout:fixed;" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <colgroup>
+    <col style="width:160px;"/>
+    <col style="width:120px;"/>
+    <col/>
+    <col style="width:130px;"/>
+    <col style="width:140px;"/>
+    <col style="width:140px;"/>
+    <col style="width:110px;"/>
+    <col style="width:200px;"/>
+    <col style="width:600px;"/>
+  </colgroup>
+  <thead>
+    <tr class="gt_heading">
+      <td colspan="9" class="gt_heading gt_title gt_font_normal gt_bottom_border" style="text-align: left;"><span class='gt_from_md'><strong>Supplementary Table 2. Global Benchmark Contributors</strong></span></td>
+    </tr>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" style="background-color: #F8F9FA; font-weight: bold;" scope="col" id="short_label">Indicator</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" style="background-color: #F8F9FA; font-weight: bold;" scope="col" id="unit">Unit</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" style="background-color: #F8F9FA; font-weight: bold;" scope="col" id="group_value">group_value</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" style="background-color: #F8F9FA; font-weight: bold;" scope="col" id="milestone">Benchmark Value</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" style="background-color: #F8F9FA; font-weight: bold;" scope="col" id="n_countries"># Contributing Countries</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" style="background-color: #F8F9FA; font-weight: bold;" scope="col" id="total_countries">Total # with Data</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" style="background-color: #F8F9FA; font-weight: bold;" scope="col" id="year_range">Year Range</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" style="background-color: #F8F9FA; font-weight: bold;" scope="col" id="percentile_used">Method</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" style="background-color: #F8F9FA; font-weight: bold;" scope="col" id="countries_display">Contributing Countries (Values)</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr class="gt_group_heading_row">
+      <th colspan="9" class="gt_group_heading" style="background-color: #F8F9FA; font-weight: bold;" scope="colgroup" id="Diets, Nutrition, and Health">Diets, Nutrition, and Health</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Diets, Nutrition, and Health  short_label" class="gt_row gt_left">Cannot afford healthy diet</td>
+<td headers="Diets, Nutrition, and Health  unit" class="gt_row gt_left">%</td>
+<td headers="Diets, Nutrition, and Health  group_value" class="gt_row gt_left">Global</td>
+<td headers="Diets, Nutrition, and Health  milestone" class="gt_row gt_right">76.0</td>
+<td headers="Diets, Nutrition, and Health  n_countries" class="gt_row gt_right">30</td>
+<td headers="Diets, Nutrition, and Health  total_countries" class="gt_row gt_right">150</td>
+<td headers="Diets, Nutrition, and Health  year_range" class="gt_row gt_right">2017-2022</td>
+<td headers="Diets, Nutrition, and Health  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Diets, Nutrition, and Health  countries_display" class="gt_row gt_left" style="white-space: normal;">Madagascar (93.6), South Sudan (92.8), Democratic Republic of the Congo (91.4), Burundi (89.6), Malawi (89.6), Mozambique (89.3), Central African Republic (86.7), Niger (86.3), Syrian Arab Republic (86.2), Haiti (83.6), Zambia (81.7), Kenya (79.2), Congo (79.1), Nigeria (78.7), Lesotho (76.3), Rwanda (75.7), United Republic of Tanzania (75.5), Zimbabwe (74.9), Uganda (72.5), Angola (72.2), Eswatini (65), Liberia (64.1), Guinea-Bissau (64), Burkina Faso (63.1), Ghana (63), Sierra Leone (62.5), Belize (61.8), South Africa (61.2), Chad (60.8), Comoros (60.8)</td></tr>
+    <tr><td headers="Diets, Nutrition, and Health  short_label" class="gt_row gt_left">Experience food insecurity</td>
+<td headers="Diets, Nutrition, and Health  unit" class="gt_row gt_left">%</td>
+<td headers="Diets, Nutrition, and Health  group_value" class="gt_row gt_left">Global</td>
+<td headers="Diets, Nutrition, and Health  milestone" class="gt_row gt_right">71.4</td>
+<td headers="Diets, Nutrition, and Health  n_countries" class="gt_row gt_right">31</td>
+<td headers="Diets, Nutrition, and Health  total_countries" class="gt_row gt_right">152</td>
+<td headers="Diets, Nutrition, and Health  year_range" class="gt_row gt_right">2022-2022</td>
+<td headers="Diets, Nutrition, and Health  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Diets, Nutrition, and Health  countries_display" class="gt_row gt_left" style="white-space: normal;">Sierra Leone (88.6), South Sudan (87.3), Haiti (82.8), Malawi (81.7), Central African Republic (81.3), Liberia (81), Afghanistan (80.9), Democratic Republic of the Congo (80.2), Congo (79.9), Comoros (79.7), Somalia (79.7), Angola (79.2), Chad (76.6), Nigeria (73.9), Kenya (72.8), Yemen (72.5), Uganda (71.2), Burundi (70.8), Zimbabwe (70.7), Madagascar (68.6), Benin (63.3), Guinea-Bissau (62.5), Mauritania (61.2), Guatemala (59.8), Cameroon (59.6), Ethiopia (59), Gambia (Republic of The) (59), United Republic of Tanzania (58.2), Papua New Guinea (57.3), Togo (57), Namibia (56.8)</td></tr>
+    <tr><td headers="Diets, Nutrition, and Health  short_label" class="gt_row gt_left">NCD-Risk</td>
+<td headers="Diets, Nutrition, and Health  unit" class="gt_row gt_left">score (points out of 9)</td>
+<td headers="Diets, Nutrition, and Health  group_value" class="gt_row gt_left">Global</td>
+<td headers="Diets, Nutrition, and Health  milestone" class="gt_row gt_right">3.4</td>
+<td headers="Diets, Nutrition, and Health  n_countries" class="gt_row gt_right">19</td>
+<td headers="Diets, Nutrition, and Health  total_countries" class="gt_row gt_right">91</td>
+<td headers="Diets, Nutrition, and Health  year_range" class="gt_row gt_right">2021-2024</td>
+<td headers="Diets, Nutrition, and Health  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Diets, Nutrition, and Health  countries_display" class="gt_row gt_left" style="white-space: normal;">Kazakhstan (3.9), Kyrgyzstan (3.8), Uzbekistan (3.7), Serbia (3.6), United States of America (3.5), Honduras (3.4), Costa Rica (3.4), Iraq (3.4), Armenia (3.4), Guatemala (3.3), Chile (3.3), Brazil (3.2), South Africa (3.2), Philippines (3.2), Thailand (3.2), Paraguay (3.2), Mongolia (3.2), Namibia (3.2), North Macedonia (3.2)</td></tr>
+    <tr><td headers="Diets, Nutrition, and Health  short_label" class="gt_row gt_left">Prevalence of undernourishment</td>
+<td headers="Diets, Nutrition, and Health  unit" class="gt_row gt_left">%</td>
+<td headers="Diets, Nutrition, and Health  group_value" class="gt_row gt_left">Global</td>
+<td headers="Diets, Nutrition, and Health  milestone" class="gt_row gt_right">33.8</td>
+<td headers="Diets, Nutrition, and Health  n_countries" class="gt_row gt_right">24</td>
+<td headers="Diets, Nutrition, and Health  total_countries" class="gt_row gt_right">118</td>
+<td headers="Diets, Nutrition, and Health  year_range" class="gt_row gt_right">2016-2022</td>
+<td headers="Diets, Nutrition, and Health  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Diets, Nutrition, and Health  countries_display" class="gt_row gt_left" style="white-space: normal;">Somalia (51.3), Haiti (50.4), Dem People's Rep of Korea (45.3), Madagascar (39.7), Yemen (39.5), Liberia (38.4), Zimbabwe (38.1), Democratic Republic of the Congo (37), Uganda (36.9), Zambia (35.4), Chad (35.1), Kenya (34.5), Syrian Arab Republic (34), Guinea-Bissau (32.2), Rwanda (31.4), Afghanistan (30.4), Sierra Leone (28.4), Papua New Guinea (27.7), Congo (26.8), Mozambique (24.8), Botswana (24.3), United Republic of Tanzania (23.8), Central African Republic (23.5), Angola (23.2)</td></tr>
+    <tr><td headers="Diets, Nutrition, and Health  short_label" class="gt_row gt_left">Protective food consumption</td>
+<td headers="Diets, Nutrition, and Health  unit" class="gt_row gt_left">%</td>
+<td headers="Diets, Nutrition, and Health  group_value" class="gt_row gt_left">Global</td>
+<td headers="Diets, Nutrition, and Health  milestone" class="gt_row gt_right">62.0</td>
+<td headers="Diets, Nutrition, and Health  n_countries" class="gt_row gt_right">19</td>
+<td headers="Diets, Nutrition, and Health  total_countries" class="gt_row gt_right">91</td>
+<td headers="Diets, Nutrition, and Health  year_range" class="gt_row gt_right">2021-2024</td>
+<td headers="Diets, Nutrition, and Health  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Diets, Nutrition, and Health  countries_display" class="gt_row gt_left" style="white-space: normal;">Switzerland (77.4), Tajikistan (71.6), Mexico (71.5), Sri Lanka (66.4), China (63.8), Indonesia (63.8), Guatemala (61.5), Armenia (60.9), Türkiye (60.9), Iran (Islamic Republic of) (60.8), Bolivia (Plurinational State of) (60.3), Peru (58.7), Kyrgyzstan (58.1), Nicaragua (58), Israel (57.8), Albania (57.4), Tunisia (56.9), Uzbekistan (55.9), Morocco (55.5)</td></tr>
+    <tr><td headers="Diets, Nutrition, and Health  short_label" class="gt_row gt_left">Soft drink consumption</td>
+<td headers="Diets, Nutrition, and Health  unit" class="gt_row gt_left">%</td>
+<td headers="Diets, Nutrition, and Health  group_value" class="gt_row gt_left">Global</td>
+<td headers="Diets, Nutrition, and Health  milestone" class="gt_row gt_right">48.5</td>
+<td headers="Diets, Nutrition, and Health  n_countries" class="gt_row gt_right">19</td>
+<td headers="Diets, Nutrition, and Health  total_countries" class="gt_row gt_right">91</td>
+<td headers="Diets, Nutrition, and Health  year_range" class="gt_row gt_right">2021-2024</td>
+<td headers="Diets, Nutrition, and Health  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Diets, Nutrition, and Health  countries_display" class="gt_row gt_left" style="white-space: normal;">Honduras (57.5), North Macedonia (53.8), Uzbekistan (52.8), Iraq (52), South Africa (51.4), Namibia (51.3), Nicaragua (51.2), Algeria (49.9), Guatemala (49.5), Tunisia (48.8), Thailand (47.5), Israel (46.3), Chile (46.2), Jordan (45.1), Philippines (45), Armenia (44.8), Georgia (43.9), Mongolia (42.5), Paraguay (42.4)</td></tr>
+    <tr><td headers="Diets, Nutrition, and Health  short_label" class="gt_row gt_left">Ultra-processed food sales</td>
+<td headers="Diets, Nutrition, and Health  unit" class="gt_row gt_left">current US$/capita/year</td>
+<td headers="Diets, Nutrition, and Health  group_value" class="gt_row gt_left">Global</td>
+<td headers="Diets, Nutrition, and Health  milestone" class="gt_row gt_right">953.2</td>
+<td headers="Diets, Nutrition, and Health  n_countries" class="gt_row gt_right">38</td>
+<td headers="Diets, Nutrition, and Health  total_countries" class="gt_row gt_right">187</td>
+<td headers="Diets, Nutrition, and Health  year_range" class="gt_row gt_right">2023-2023</td>
+<td headers="Diets, Nutrition, and Health  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Diets, Nutrition, and Health  countries_display" class="gt_row gt_left" style="white-space: normal;">Norway (1564.3), United States of America (1508.5), Liechtenstein (1490.6), Finland (1466.5), Ireland (1386.8), Monaco (1329.7), Iceland (1314.1), Switzerland (1294.2), Denmark (1287.3), United Kingdom of Great Britain and Northern Ireland (1151.8), Sweden (1108), Luxembourg (1105.4), Belgium (1044.5), Australia (1033.3), Bahamas (1024.9), New Zealand (1007.7), Canada (984.9), Germany (962.4), Austria (962.1), Netherlands (961.6), Japan (960.6), Andorra (844.7), Uruguay (802.9), Estonia (783.3), Malta (767.6), Israel (759.3), France (753.3), Croatia (660.1), Italy (627.1), Latvia (615.6), Qatar (608), Czechia (593.8), Barbados (591.5), Mexico (583.5), Poland (583), Costa Rica (572.4), Saint Kitts and Nevis (564.6), Chile (560.9)</td></tr>
+    <tr><td headers="Diets, Nutrition, and Health  short_label" class="gt_row gt_left">Unhealthy food consumption</td>
+<td headers="Diets, Nutrition, and Health  unit" class="gt_row gt_left">%</td>
+<td headers="Diets, Nutrition, and Health  group_value" class="gt_row gt_left">Global</td>
+<td headers="Diets, Nutrition, and Health  milestone" class="gt_row gt_right">35.1</td>
+<td headers="Diets, Nutrition, and Health  n_countries" class="gt_row gt_right">19</td>
+<td headers="Diets, Nutrition, and Health  total_countries" class="gt_row gt_right">91</td>
+<td headers="Diets, Nutrition, and Health  year_range" class="gt_row gt_right">2021-2024</td>
+<td headers="Diets, Nutrition, and Health  percentile_used" class="gt_row gt_left">Mean Bottom 20% (20th percentile)</td>
+<td headers="Diets, Nutrition, and Health  countries_display" class="gt_row gt_left" style="white-space: normal;">Comoros (43.8), Bangladesh (43.5), Uganda (43), Mozambique (42.7), Ghana (40.1), Yemen (38.6), Cote d'Ivoire (38.5), Lebanon (37.9), Burkina Faso (37.7), Democratic Republic of the Congo (36.5), Madagascar (36.2), Liberia (34.5), Sierra Leone (31.1), Niger (29), United Republic of Tanzania (28.7), Malawi (28.3), Benin (28.1), Ethiopia (24.4), Togo (23.4)</td></tr>
+    <tr><td headers="Diets, Nutrition, and Health  short_label" class="gt_row gt_left">Zero fruits or vegetables, adult</td>
+<td headers="Diets, Nutrition, and Health  unit" class="gt_row gt_left">%</td>
+<td headers="Diets, Nutrition, and Health  group_value" class="gt_row gt_left">Global</td>
+<td headers="Diets, Nutrition, and Health  milestone" class="gt_row gt_right">21.7</td>
+<td headers="Diets, Nutrition, and Health  n_countries" class="gt_row gt_right">19</td>
+<td headers="Diets, Nutrition, and Health  total_countries" class="gt_row gt_right">91</td>
+<td headers="Diets, Nutrition, and Health  year_range" class="gt_row gt_right">2021-2024</td>
+<td headers="Diets, Nutrition, and Health  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Diets, Nutrition, and Health  countries_display" class="gt_row gt_left" style="white-space: normal;">Ethiopia (37.6), Comoros (28), Niger (27), Mauritania (26.6), Guinea (25), Somalia (23), Botswana (22.9), India (22.2), Cote d'Ivoire (21.4), Mongolia (20.9), Liberia (18.4), Yemen (18.4), United Republic of Tanzania (18.4), Venezuela, Bolivarian Republic of (18.1), Madagascar (17.3), Nigeria (17.2), Dominican Republic (16.9), Congo (16.8), Chad (16.4)</td></tr>
+    <tr><td headers="Diets, Nutrition, and Health  short_label" class="gt_row gt_left">Zero fruits or vegetables, child</td>
+<td headers="Diets, Nutrition, and Health  unit" class="gt_row gt_left">% population, 6-23 months</td>
+<td headers="Diets, Nutrition, and Health  group_value" class="gt_row gt_left">Global</td>
+<td headers="Diets, Nutrition, and Health  milestone" class="gt_row gt_right">54.5</td>
+<td headers="Diets, Nutrition, and Health  n_countries" class="gt_row gt_right">8</td>
+<td headers="Diets, Nutrition, and Health  total_countries" class="gt_row gt_right">37</td>
+<td headers="Diets, Nutrition, and Health  year_range" class="gt_row gt_right">2016-2022</td>
+<td headers="Diets, Nutrition, and Health  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Diets, Nutrition, and Health  countries_display" class="gt_row gt_left" style="white-space: normal;">Ethiopia (69.2), Liberia (55.8), Haiti (54.7), Uganda (54.1), Sierra Leone (53.6), India (52), Kiribati (51.4), Bangladesh (44.8)</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="9" class="gt_group_heading" style="background-color: #F8F9FA; font-weight: bold;" scope="colgroup" id="Environment, Natural Resources, and Production">Environment, Natural Resources, and Production</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Environment, Natural Resources, and Production  short_label" class="gt_row gt_left">Agricultural water withdrawal</td>
+<td headers="Environment, Natural Resources, and Production  unit" class="gt_row gt_left">% total renewable</td>
+<td headers="Environment, Natural Resources, and Production  group_value" class="gt_row gt_left">Global</td>
+<td headers="Environment, Natural Resources, and Production  milestone" class="gt_row gt_right">265.5</td>
+<td headers="Environment, Natural Resources, and Production  n_countries" class="gt_row gt_right">35</td>
+<td headers="Environment, Natural Resources, and Production  total_countries" class="gt_row gt_right">175</td>
+<td headers="Environment, Natural Resources, and Production  year_range" class="gt_row gt_right">2020-2020</td>
+<td headers="Environment, Natural Resources, and Production  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Environment, Natural Resources, and Production  countries_display" class="gt_row gt_left" style="white-space: normal;">Kuwait (3892), United Arab Emirates (1544.1), Saudi Arabia (883.3), Libya (692.9), Qatar (555.1), Yemen (154), Bahrain (124.7), Oman (110.5), Egypt (106.7), Uzbekistan (96.5), Syrian Arab Republic (87.3), Pakistan (69.9), Sudan (68.5), Barbados (68.5), Israel (67.1), Turkmenistan (65.1), Iran (Islamic Republic of) (62.8), Jordan (60.9), Tunisia (58.7), Algeria (57.2), Malta (47.5), Cabo Verde (37.7), Iraq (36.4), India (36), Tajikistan (33.7), Azerbaijan (32.3), Dominican Republic (32.2), Morocco (31.6), Afghanistan (30.6), Kyrgyzstan (30.1), Armenia (25.6), Türkiye (25.5), South Africa (23.3), Republic of Korea (22.9), Somalia (22.3)</td></tr>
+    <tr><td headers="Environment, Natural Resources, and Production  short_label" class="gt_row gt_left">Cropland change</td>
+<td headers="Environment, Natural Resources, and Production  unit" class="gt_row gt_left">%</td>
+<td headers="Environment, Natural Resources, and Production  group_value" class="gt_row gt_left">Global</td>
+<td headers="Environment, Natural Resources, and Production  milestone" class="gt_row gt_right">1.9</td>
+<td headers="Environment, Natural Resources, and Production  n_countries" class="gt_row gt_right">39</td>
+<td headers="Environment, Natural Resources, and Production  total_countries" class="gt_row gt_right">193</td>
+<td headers="Environment, Natural Resources, and Production  year_range" class="gt_row gt_right">2022-2022</td>
+<td headers="Environment, Natural Resources, and Production  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Environment, Natural Resources, and Production  countries_display" class="gt_row gt_left" style="white-space: normal;">Central African Republic (6), Djibouti (5.8), Colombia (4.4), Benin (3.7), Bolivia (Plurinational State of) (3.2), Cote d'Ivoire (3.2), Oman (2.7), Guinea-Bissau (2.6), Jordan (2.4), Democratic Republic of the Congo (2.3), Mali (2.1), Guinea (2.1), Burkina Faso (1.9), Congo (1.8), Lithuania (1.7), Qatar (1.7), United Arab Emirates (1.7), Burundi (1.7), Paraguay (1.6), Belize (1.5), Cambodia (1.5), Peru (1.4), Argentina (1.3), New Zealand (1.2), Malawi (1.1), Egypt (1.1), Latvia (1), Ethiopia (1), Senegal (1), Sao Tome and Principe (1), Nigeria (0.9), Croatia (0.9), Tajikistan (0.9), United Republic of Tanzania (0.8), Ghana (0.8), Estonia (0.7), Iran (Islamic Republic of) (0.7), Lesotho (0.7), Belgium (0.6)</td></tr>
+    <tr><td headers="Environment, Natural Resources, and Production  short_label" class="gt_row gt_left">Emissions intensity, beef</td>
+<td headers="Environment, Natural Resources, and Production  unit" class="gt_row gt_left">kg CO2eq/kg product</td>
+<td headers="Environment, Natural Resources, and Production  group_value" class="gt_row gt_left">Global</td>
+<td headers="Environment, Natural Resources, and Production  milestone" class="gt_row gt_right">124.4</td>
+<td headers="Environment, Natural Resources, and Production  n_countries" class="gt_row gt_right">37</td>
+<td headers="Environment, Natural Resources, and Production  total_countries" class="gt_row gt_right">181</td>
+<td headers="Environment, Natural Resources, and Production  year_range" class="gt_row gt_right">2022-2022</td>
+<td headers="Environment, Natural Resources, and Production  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Environment, Natural Resources, and Production  countries_display" class="gt_row gt_left" style="white-space: normal;">Niger (312.8), Timor-Leste (307.7), Madagascar (280.2), Lesotho (233.9), Mali (225), Ethiopia (181.2), Guinea (155.8), Myanmar (149.9), Mozambique (149.2), Micronesia (Federated States of) (133.2), Equatorial Guinea (132.4), Gambia (Republic of The) (130.7), Namibia (125.1), Vanuatu (116.3), Belize (108.2), Guinea-Bissau (105.6), Lao People's Democratic Republic (100), Bhutan (95.3), Cuba (93), Democratic Republic of the Congo (91.7), Barbados (90), Kenya (89.7), Cambodia (85.9), Chad (84.3), Cote d'Ivoire (84.3), Congo (84.2), Burkina Faso (84.2), Somalia (81.9), Dominican Republic (81.7), Tonga (80), Ghana (79.9), Sudan (79), Burundi (75.5), Uganda (74.5), Colombia (73.7), Eritrea (73.5), Nigeria (73.4)</td></tr>
+    <tr><td headers="Environment, Natural Resources, and Production  short_label" class="gt_row gt_left">Emissions intensity, milk</td>
+<td headers="Environment, Natural Resources, and Production  unit" class="gt_row gt_left">kg CO2eq/kg product</td>
+<td headers="Environment, Natural Resources, and Production  group_value" class="gt_row gt_left">Global</td>
+<td headers="Environment, Natural Resources, and Production  milestone" class="gt_row gt_right">9.7</td>
+<td headers="Environment, Natural Resources, and Production  n_countries" class="gt_row gt_right">36</td>
+<td headers="Environment, Natural Resources, and Production  total_countries" class="gt_row gt_right">178</td>
+<td headers="Environment, Natural Resources, and Production  year_range" class="gt_row gt_right">2022-2022</td>
+<td headers="Environment, Natural Resources, and Production  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Environment, Natural Resources, and Production  countries_display" class="gt_row gt_left" style="white-space: normal;">Papua New Guinea (40.1), Cote d'Ivoire (18.6), Vanuatu (18.2), Lao People's Democratic Republic (17.2), Cambodia (15.9), Ghana (14.3), Burkina Faso (14), Trinidad and Tobago (12.9), Mali (12.8), Guinea-Bissau (11.5), Eritrea (11.3), Togo (10.8), Fiji (10.6), Haiti (9.9), Chad (9.2), Benin (9.1), Nigeria (7.9), Central African Republic (7.6), Senegal (7), Madagascar (6.4), Eswatini (6.3), Niger (6.2), Mongolia (6.1), Brunei Darussalam (6.1), Guinea (5.9), Djibouti (5.4), Mauritania (5.3), Sudan (5.2), South Sudan (5), Somalia (4.9), Myanmar (4.8), Zimbabwe (4.3), Uganda (4.3), United Republic of Tanzania (4.3), Malawi (4.2), Burundi (4.2)</td></tr>
+    <tr><td headers="Environment, Natural Resources, and Production  short_label" class="gt_row gt_left">Emissions intensity, rice</td>
+<td headers="Environment, Natural Resources, and Production  unit" class="gt_row gt_left">kg CO2eq/kg product</td>
+<td headers="Environment, Natural Resources, and Production  group_value" class="gt_row gt_left">Global</td>
+<td headers="Environment, Natural Resources, and Production  milestone" class="gt_row gt_right">307.2</td>
+<td headers="Environment, Natural Resources, and Production  n_countries" class="gt_row gt_right">24</td>
+<td headers="Environment, Natural Resources, and Production  total_countries" class="gt_row gt_right">116</td>
+<td headers="Environment, Natural Resources, and Production  year_range" class="gt_row gt_right">2019-2022</td>
+<td headers="Environment, Natural Resources, and Production  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Environment, Natural Resources, and Production  countries_display" class="gt_row gt_left" style="white-space: normal;">Jamaica (6671), Ukraine (283.7), Algeria (119.7), South Africa (64.9), Mauritius (49.8), Comoros (28.8), Hungary (24.9), France (21.9), Romania (21.1), Papua New Guinea (20.8), Turkmenistan (8.3), Gambia (Republic of The) (7.5), Angola (7.5), Zimbabwe (5.1), Congo (4.6), Trinidad and Tobago (3.9), Spain (3.8), Micronesia (Federated States of) (3.8), Eswatini (3.6), Solomon Islands (3.6), Uzbekistan (3.5), South Sudan (3.5), Morocco (3.4), Burkina Faso (3.4)</td></tr>
+    <tr><td headers="Environment, Natural Resources, and Production  short_label" class="gt_row gt_left">Food system emissions change</td>
+<td headers="Environment, Natural Resources, and Production  unit" class="gt_row gt_left">% change relative to 2000-2010 country average baseline, scaled to 0 = 100 for interpretability</td>
+<td headers="Environment, Natural Resources, and Production  group_value" class="gt_row gt_left">Global</td>
+<td headers="Environment, Natural Resources, and Production  milestone" class="gt_row gt_right">177.9</td>
+<td headers="Environment, Natural Resources, and Production  n_countries" class="gt_row gt_right">39</td>
+<td headers="Environment, Natural Resources, and Production  total_countries" class="gt_row gt_right">192</td>
+<td headers="Environment, Natural Resources, and Production  year_range" class="gt_row gt_right">2022-2022</td>
+<td headers="Environment, Natural Resources, and Production  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Environment, Natural Resources, and Production  countries_display" class="gt_row gt_left" style="white-space: normal;">Sao Tome and Principe (579.6), Oman (272.4), Qatar (259.8), Chad (204.7), Cambodia (203.3), Suriname (198.4), Mauritius (197.8), Gabon (196.8), San Marino (188.9), Niger (187.8), Tajikistan (184.3), Algeria (172), Saudi Arabia (167), Maldives (161.4), Türkiye (158.6), Kiribati (158.5), Guyana (157.5), Guinea (156.5), Lebanon (155.8), Nigeria (154.6), Malawi (154.5), Pakistan (154.5), Democratic Republic of the Congo (154.2), Bahamas (153.6), Viet Nam (153.5), United Arab Emirates (153.2), Turkmenistan (152.4), Afghanistan (148.6), Bhutan (148.6), Kyrgyzstan (147.7), Bahrain (147.1), Ethiopia (147), Morocco (146.8), Uganda (146.2), Kuwait (145.8), Togo (144), Belize (142.6), Haiti (141.7), Mali (141.6)</td></tr>
+    <tr><td headers="Environment, Natural Resources, and Production  short_label" class="gt_row gt_left">Pesticide use</td>
+<td headers="Environment, Natural Resources, and Production  unit" class="gt_row gt_left">kg/ha</td>
+<td headers="Environment, Natural Resources, and Production  group_value" class="gt_row gt_left">Global</td>
+<td headers="Environment, Natural Resources, and Production  milestone" class="gt_row gt_right">15.8</td>
+<td headers="Environment, Natural Resources, and Production  n_countries" class="gt_row gt_right">36</td>
+<td headers="Environment, Natural Resources, and Production  total_countries" class="gt_row gt_right">180</td>
+<td headers="Environment, Natural Resources, and Production  year_range" class="gt_row gt_right">2022-2022</td>
+<td headers="Environment, Natural Resources, and Production  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Environment, Natural Resources, and Production  countries_display" class="gt_row gt_left" style="white-space: normal;">Antigua and Barbuda (36.6), Qatar (35.1), Brunei Darussalam (29), Saint Vincent and the Grenadines (28.6), Saint Lucia (27.6), Trinidad and Tobago (25), Maldives (23.7), Andorra (23.6), Saint Kitts and Nevis (19.9), Seychelles (19.5), Suriname (18.7), Nauru (17.9), Costa Rica (17.5), Grenada (17.1), Bahamas (16.2), Colombia (16), Israel (14.7), Viet Nam (13.9), Republic of Korea (13), Brazil (12.6), Japan (11.6), Malta (11.6), Mauritius (11), Palau (10.8), Belize (10.1), Chile (9.9), New Zealand (8.7), Jamaica (8.7), Barbados (8.6), Netherlands (8.4), Cyprus (8.4), Uruguay (7.6), Eswatini (7.2), Nicaragua (7.2), Montenegro (6.7), Honduras (6.5)</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="9" class="gt_group_heading" style="background-color: #F8F9FA; font-weight: bold;" scope="colgroup" id="Livelihoods, Poverty, and Equity">Livelihoods, Poverty, and Equity</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Livelihoods, Poverty, and Equity  short_label" class="gt_row gt_left">Child labor</td>
+<td headers="Livelihoods, Poverty, and Equity  unit" class="gt_row gt_left">% population 5-17 years</td>
+<td headers="Livelihoods, Poverty, and Equity  group_value" class="gt_row gt_left">Global</td>
+<td headers="Livelihoods, Poverty, and Equity  milestone" class="gt_row gt_right">30.0</td>
+<td headers="Livelihoods, Poverty, and Equity  n_countries" class="gt_row gt_right">15</td>
+<td headers="Livelihoods, Poverty, and Equity  total_countries" class="gt_row gt_right">74</td>
+<td headers="Livelihoods, Poverty, and Equity  year_range" class="gt_row gt_right">2015-2023</td>
+<td headers="Livelihoods, Poverty, and Equity  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Livelihoods, Poverty, and Equity  countries_display" class="gt_row gt_left" style="white-space: normal;">Burkina Faso (41.5), Chad (39), Togo (38.5), Madagascar (36.7), Nigeria (31.5), Burundi (30.9), Lao People's Democratic Republic (28.2), Zimbabwe (27.9), Liberia (27.8), Central African Republic (26.9), Tonga (26.1), Sierra Leone (25.2), Guinea (24.2), Senegal (22.8), Mali (22.7)</td></tr>
+    <tr><td headers="Livelihoods, Poverty, and Equity  short_label" class="gt_row gt_left">Rural underemployment</td>
+<td headers="Livelihoods, Poverty, and Equity  unit" class="gt_row gt_left">% working age population</td>
+<td headers="Livelihoods, Poverty, and Equity  group_value" class="gt_row gt_left">Global</td>
+<td headers="Livelihoods, Poverty, and Equity  milestone" class="gt_row gt_right">12.4</td>
+<td headers="Livelihoods, Poverty, and Equity  n_countries" class="gt_row gt_right">22</td>
+<td headers="Livelihoods, Poverty, and Equity  total_countries" class="gt_row gt_right">106</td>
+<td headers="Livelihoods, Poverty, and Equity  year_range" class="gt_row gt_right">2017-2024</td>
+<td headers="Livelihoods, Poverty, and Equity  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Livelihoods, Poverty, and Equity  countries_display" class="gt_row gt_left" style="white-space: normal;">Ethiopia (31.3), Armenia (21), Ecuador (21), Marshall Islands (19.7), Gambia (Republic of The) (15.5), Rwanda (14.4), Honduras (13.9), Vanuatu (12.5), Nigeria (10.4), Brazil (9.8), Eswatini (9.7), Ghana (9.3), Cote d'Ivoire (9.2), Philippines (9.2), Chile (8.9), Nepal (8.9), Iraq (8.5), Ireland (8.4), Mozambique (8.1), Guyana (7.9), Panama (7.9), Colombia (7.7)</td></tr>
+    <tr><td headers="Livelihoods, Poverty, and Equity  short_label" class="gt_row gt_left">Rural unemployment</td>
+<td headers="Livelihoods, Poverty, and Equity  unit" class="gt_row gt_left">% working age population</td>
+<td headers="Livelihoods, Poverty, and Equity  group_value" class="gt_row gt_left">Global</td>
+<td headers="Livelihoods, Poverty, and Equity  milestone" class="gt_row gt_right">15.4</td>
+<td headers="Livelihoods, Poverty, and Equity  n_countries" class="gt_row gt_right">26</td>
+<td headers="Livelihoods, Poverty, and Equity  total_countries" class="gt_row gt_right">130</td>
+<td headers="Livelihoods, Poverty, and Equity  year_range" class="gt_row gt_right">2015-2024</td>
+<td headers="Livelihoods, Poverty, and Equity  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Livelihoods, Poverty, and Equity  countries_display" class="gt_row gt_left" style="white-space: normal;">South Africa (37.8), Eswatini (36.3), Cabo Verde (33.1), Montenegro (23.3), Djibouti (22.1), Jordan (19.7), Lesotho (18.7), Tunisia (17.5), Namibia (14.5), North Macedonia (14.4), Guyana (13.1), Spain (13), Iraq (12.9), Somalia (11.6), Rwanda (11.5), Ukraine (10.6), Greece (10.5), Nepal (9.9), Samoa (9.5), Bosnia and Herzegovina (9.5), Belize (8.9), Sao Tome and Principe (8.7), Lithuania (8.5), Romania (8.3), Bulgaria (7.9), Chile (7.9)</td></tr>
+    <tr><td headers="Livelihoods, Poverty, and Equity  short_label" class="gt_row gt_left">Share of agriculture in GDP</td>
+<td headers="Livelihoods, Poverty, and Equity  unit" class="gt_row gt_left">% GDP</td>
+<td headers="Livelihoods, Poverty, and Equity  group_value" class="gt_row gt_left">Global</td>
+<td headers="Livelihoods, Poverty, and Equity  milestone" class="gt_row gt_right">28.2</td>
+<td headers="Livelihoods, Poverty, and Equity  n_countries" class="gt_row gt_right">39</td>
+<td headers="Livelihoods, Poverty, and Equity  total_countries" class="gt_row gt_right">192</td>
+<td headers="Livelihoods, Poverty, and Equity  year_range" class="gt_row gt_right">2022-2023</td>
+<td headers="Livelihoods, Poverty, and Equity  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Livelihoods, Poverty, and Equity  countries_display" class="gt_row gt_left" style="white-space: normal;">Liberia (65.7), Somalia (52.9), Sierra Leone (46.9), Niger (37.2), Comoros (36), Mali (35.7), Syrian Arab Republic (35.1), Afghanistan (33.7), Solomon Islands (33.1), Burundi (32.6), Chad (32.1), Guinea-Bissau (30.7), Central African Republic (30.5), Ethiopia (29.9), Guinea (27.8), Malawi (27.6), Benin (26.9), United Republic of Tanzania (26.2), Mozambique (25.9), Tajikistan (24.4), Uganda (24.1), Kiribati (24), Nigeria (23.7), Rwanda (23.5), Dem People's Rep of Korea (23.1), Myanmar (22.4), Uzbekistan (22), Cambodia (21.9), Vanuatu (21.5), Micronesia (Federated States of) (21.5), Madagascar (21.2), Kenya (21.2), Marshall Islands (20.5), Burkina Faso (20.4), Gambia (Republic of The) (20.3), Nepal (20.3), Sudan (20.1), Yemen (19.3), Pakistan (19.2)</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="9" class="gt_group_heading" style="background-color: #F8F9FA; font-weight: bold;" scope="colgroup" id="Resilience">Resilience</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Resilience  short_label" class="gt_row gt_left">Food price volatility</td>
+<td headers="Resilience  unit" class="gt_row gt_left">index</td>
+<td headers="Resilience  group_value" class="gt_row gt_left">Global</td>
+<td headers="Resilience  milestone" class="gt_row gt_right">1.1</td>
+<td headers="Resilience  n_countries" class="gt_row gt_right">36</td>
+<td headers="Resilience  total_countries" class="gt_row gt_right">180</td>
+<td headers="Resilience  year_range" class="gt_row gt_right">2017-2024</td>
+<td headers="Resilience  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Resilience  countries_display" class="gt_row gt_left" style="white-space: normal;">Yemen (2.2), Portugal (1.6), Guatemala (1.5), United Arab Emirates (1.5), Egypt (1.5), Zimbabwe (1.4), Djibouti (1.2), United States of America (1.2), Georgia (1.2), Bhutan (1.2), Estonia (1.2), Chad (1.1), Kazakhstan (1.1), Equatorial Guinea (1.1), Luxembourg (1.1), Saint Lucia (1.1), Poland (1.1), Sudan (1.1), Hungary (1.1), Mauritius (1.1), Dominica (1), Solomon Islands (1), Ireland (1), Cabo Verde (1), India (1), Qatar (1), Burkina Faso (1), Serbia (1), Cambodia (0.9), Slovakia (0.9), Romania (0.9), Slovenia (0.9), Timor-Leste (0.9), Mauritania (0.9), Montenegro (0.9), Spain (0.9)</td></tr>
+    <tr><td headers="Resilience  short_label" class="gt_row gt_left">Food supply variability</td>
+<td headers="Resilience  unit" class="gt_row gt_left">kcal/day</td>
+<td headers="Resilience  group_value" class="gt_row gt_left">Global</td>
+<td headers="Resilience  milestone" class="gt_row gt_right">58.3</td>
+<td headers="Resilience  n_countries" class="gt_row gt_right">37</td>
+<td headers="Resilience  total_countries" class="gt_row gt_right">167</td>
+<td headers="Resilience  year_range" class="gt_row gt_right">2023-2023</td>
+<td headers="Resilience  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Resilience  countries_display" class="gt_row gt_left" style="white-space: normal;">Venezuela, Bolivarian Republic of (171), Yemen (83), Cuba (78), Ireland (77), Samoa (73), United Arab Emirates (71), Angola (70), Armenia (70), Dominica (64), Guyana (64), Mauritius (64), Togo (64), Namibia (63), Niger (63), Uzbekistan (60), Iceland (55), Barbados (52), Norway (52), Poland (51), Sierra Leone (51), Georgia (50), Kenya (50), Netherlands (50), Azerbaijan (49), Hungary (49), Costa Rica (47), Ecuador (47), Slovakia (46), Luxembourg (43), Algeria (42), Benin (42), Jamaica (42), Albania (41), Cameroon (41), El Salvador (41), Eswatini (41), Tajikistan (41)</td></tr>
+    <tr><td headers="Resilience  short_label" class="gt_row gt_left">Reduced coping strategies</td>
+<td headers="Resilience  unit" class="gt_row gt_left">% population</td>
+<td headers="Resilience  group_value" class="gt_row gt_left">Global</td>
+<td headers="Resilience  milestone" class="gt_row gt_right">0.5</td>
+<td headers="Resilience  n_countries" class="gt_row gt_right">13</td>
+<td headers="Resilience  total_countries" class="gt_row gt_right">61</td>
+<td headers="Resilience  year_range" class="gt_row gt_right">2022-2024</td>
+<td headers="Resilience  percentile_used" class="gt_row gt_left">Mean Top 20% (80th percentile)</td>
+<td headers="Resilience  countries_display" class="gt_row gt_left" style="white-space: normal;">Haiti (0.7), Syrian Arab Republic (0.6), Zimbabwe (0.6), Yemen (0.6), Afghanistan (0.6), Malawi (0.5), Central African Republic (0.5), Sierra Leone (0.5), Congo (0.5), Cameroon (0.5), Colombia (0.4), Angola (0.4), Burundi (0.4)</td></tr>
+  </tbody>
+  
+</table>
+</div>
+</body>
+</html>

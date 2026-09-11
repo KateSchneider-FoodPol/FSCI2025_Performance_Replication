@@ -131,7 +131,7 @@ save_table_as_html_png_pdf <- function(gt_table, filename_base,
 # Part 1 – Load and Clean Data
 
 ```{r load-data}
-analysis_data  <- read_csv(file.path(data_out, "FSCI_2025.csv"))
+analysis_data  <- readRDS(file.path(data_out, "FSCI_2025.rds"))
 global_targets <- read_csv(file.path(data_out, "global_targets.csv"))
 
 cat("Loaded", nrow(analysis_data),  "rows of analysis data\n")
@@ -166,6 +166,7 @@ analysis_data <- analysis_data %>%
       short_label == "Protective foods" ~ "Protective food consumption",
       TRUE ~ short_label
     ),
+    desirable_direction = as.numeric(desirable_direction),
     desirable_direction = case_when(
       short_label == "Unhealthy food consumption"  ~ -1,
       short_label == "Protective food consumption" ~  1,
