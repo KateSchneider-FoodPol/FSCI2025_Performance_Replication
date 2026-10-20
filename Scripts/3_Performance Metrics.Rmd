@@ -488,22 +488,34 @@ calculate_country_distances <- function(data, benchmarks) {
         desirable_direction == -1 ~ income_benchmark - value, TRUE ~ NA_real_),
 
       # Directional percentage distances
+      # Normalized by the benchmark/target itself, except when that benchmark
+      # is exactly 0, in which case fall back to normalizing by abs(value)
+      # (avoids division by zero); if both target and value are 0, the
+      # country is already exactly at the benchmark, so return 0.
+      denom_target         = if_else(target             == 0, abs(value), abs(target)),
+      denom_global         = if_else(benchmark_Global    == 0, abs(value), abs(benchmark_Global)),
+      denom_regional       = if_else(regional_benchmark  == 0, abs(value), abs(regional_benchmark)),
+      denom_income         = if_else(income_benchmark    == 0, abs(value), abs(income_benchmark)),
       dir_pct_distance_to_target   = case_when(
-        is.na(target)            | is.na(value) | value == 0 ~ NA_real_,
-        desirable_direction ==  1 ~ (value - target)            / abs(value) * 100,
-        desirable_direction == -1 ~ (target - value)            / abs(value) * 100, TRUE ~ NA_real_),
+        is.na(target)             | is.na(value) ~ NA_real_,
+        target             == 0 & value == 0 ~ 0,
+        desirable_direction ==  1 ~ (value - target)             / denom_target   * 100,
+        desirable_direction == -1 ~ (target - value)             / denom_target   * 100, TRUE ~ NA_real_),
       dir_pct_distance_to_global   = case_when(
-        is.na(benchmark_Global)  | is.na(value) | value == 0 ~ NA_real_,
-        desirable_direction ==  1 ~ (value - benchmark_Global)  / abs(value) * 100,
-        desirable_direction == -1 ~ (benchmark_Global - value)  / abs(value) * 100, TRUE ~ NA_real_),
+        is.na(benchmark_Global)   | is.na(value) ~ NA_real_,
+        benchmark_Global   == 0 & value == 0 ~ 0,
+        desirable_direction ==  1 ~ (value - benchmark_Global)   / denom_global   * 100,
+        desirable_direction == -1 ~ (benchmark_Global - value)   / denom_global   * 100, TRUE ~ NA_real_),
       dir_pct_distance_to_regional = case_when(
-        is.na(regional_benchmark)| is.na(value) | value == 0 ~ NA_real_,
-        desirable_direction ==  1 ~ (value - regional_benchmark)/ abs(value) * 100,
-        desirable_direction == -1 ~ (regional_benchmark - value)/ abs(value) * 100, TRUE ~ NA_real_),
+        is.na(regional_benchmark) | is.na(value) ~ NA_real_,
+        regional_benchmark == 0 & value == 0 ~ 0,
+        desirable_direction ==  1 ~ (value - regional_benchmark) / denom_regional * 100,
+        desirable_direction == -1 ~ (regional_benchmark - value) / denom_regional * 100, TRUE ~ NA_real_),
       dir_pct_distance_to_income   = case_when(
-        is.na(income_benchmark)  | is.na(value) | value == 0 ~ NA_real_,
-        desirable_direction ==  1 ~ (value - income_benchmark)  / abs(value) * 100,
-        desirable_direction == -1 ~ (income_benchmark - value)  / abs(value) * 100, TRUE ~ NA_real_),
+        is.na(income_benchmark)   | is.na(value) ~ NA_real_,
+        income_benchmark   == 0 & value == 0 ~ 0,
+        desirable_direction ==  1 ~ (value - income_benchmark)   / denom_income   * 100,
+        desirable_direction == -1 ~ (income_benchmark - value)   / denom_income   * 100, TRUE ~ NA_real_),
 
       # Status flags
       meets_target   = if_else((desirable_direction ==  1 & value >= target)   |
@@ -516,7 +528,8 @@ calculate_country_distances <- function(data, benchmarks) {
                                 (desirable_direction == -1 & value <= income_benchmark), 1L, 0L)
     ) %>%
     ungroup() %>%
-    select(-region_col_name, -income_col_name)
+    select(-region_col_name, -income_col_name,
+           -denom_target, -denom_global, -denom_regional, -denom_income)
 }
 
 country_distance_data <- calculate_country_distances(analysis_data, final_table)
